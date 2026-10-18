@@ -718,6 +718,16 @@ function buildScenery(track: Track): THREE.Group {
   const pitStart = track.pitFrom - 40;
   const pitEnd = track.pitTo + 40;
   const dummy = new THREE.Object3D();
+  // コース (中心線) に近すぎる場所には置かない。曲がりの内側で、別の所の道に当たるのも防ぐ
+  const nearTrack = (x: number, z: number, clearance: number): boolean => {
+    const limit = clearance * clearance;
+    for (const q of track.pts) {
+      const dx = q.x - x;
+      const dz = q.z - z;
+      if (dx * dx + dz * dz < limit) return true;
+    }
+    return false;
+  };
 
   // 木: 幹と葉 (それぞれを、まとめて描く)
   const treeMats: THREE.Matrix4[] = [];
@@ -729,6 +739,7 @@ function buildScenery(track: Track): THREE.Group {
       for (let q = 0; q < 2; q++) {
         const o = side * (half + 22 + rnd() * 40);
         dummy.position.set(p.x - t.z * o, 0, p.z + t.x * o);
+        if (nearTrack(dummy.position.x, dummy.position.z, half + 8)) continue;
         const sc = 0.8 + rnd() * 0.8;
         dummy.scale.set(sc, sc, sc);
         dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
@@ -760,6 +771,7 @@ function buildScenery(track: Track): THREE.Group {
       const o = side * (half + 11);
       const x = p.x - t.z * o;
       const z = p.z + t.x * o;
+      if (nearTrack(x, z, half + 4)) continue;
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 12, 6), poleMat);
       pole.position.set(x, 6, z);
       const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.4), lampMat);
@@ -781,6 +793,10 @@ function buildScenery(track: Track): THREE.Group {
     const w = 8 + rnd() * 14;
     const h = 10 + rnd() * 40;
     dummy.position.set(p.x - t.z * o, h / 2, p.z + t.x * o);
+    // 建物の大きさの分だけ、道から離す
+    if (nearTrack(dummy.position.x, dummy.position.z, half + w)) {
+      dummy.position.set(0, -1000, 0); // 置けない場所は、地面の下へ隠す
+    }
     dummy.scale.set(w, h, w * (0.6 + rnd() * 0.8));
     dummy.rotation.set(0, 0, 0);
     dummy.updateMatrix();
