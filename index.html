@@ -120,7 +120,14 @@
       .toast.solid { background: var(--panel); border-color: var(--accent); color: var(--text); }
       .toast[hidden] { display: none; }
       @media (max-width: 480px) {
-        .pad-btn { width: 80px; height: 80px; font-size: 13px; }
+        .pad-btn { width: 58px; height: 58px; font-size: 11px; }
+        .pad { gap: 6px; }
+        .hud-bottom { gap: 4px; }
+        .speed { padding: 6px 6px; min-width: 0; }
+        .speed > div:first-child { font-size: 20px; }
+        .dur-label { display: none; }
+        /* 狭い画面では、ニトロをアクセルの上に置いて、画面の外へはみ出さないようにする */
+        .nitro-btn { position: absolute; right: 0; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 66px); }
         .title { font-size: 44px; }
       }
     </style>
