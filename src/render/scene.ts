@@ -526,23 +526,28 @@ export class World {
         parts.cockpit!.visible = car.isPlayer && firstPerson;
       }
       // 一人称のときは、運転席の画面に地図を描く
-      // エンストした車からは、白っぽい煙が出る (失格までの間)
+      // エンストした車からは、白っぽい煙が勢いよく出る (失格までの間)
       if (car.stalled && !car.dnf) {
         const left = (this.stallTimers.get(car) ?? 0) - dt;
         if (left <= 0) {
-          this.stallTimers.set(car, 0.1);
+          this.stallTimers.set(car, 0.04);
           const fwdX = Math.sin(car.heading);
           const fwdZ = Math.cos(car.heading);
-          this.particles.add({
-            pos: new THREE.Vector3(car.x + fwdX * 1.1, 0.8, car.z + fwdZ * 1.1),
-            v: new THREE.Vector3(-fwdX * 0.9 + (Math.random() - 0.5), 1.6, -fwdZ * 0.9 + (Math.random() - 0.5)),
-            life: 2.2,
-            size0: 0.6,
-            size1: 2.4,
-            texture: smokeTexture(false),
-            opacity: 0.8,
-            drag: 0.5,
-          });
+          // 左右のマフラーの位置から、2 本分の煙を出す
+          for (const side of [1, -1]) {
+            const sx = -fwdZ * side * 0.5;
+            const sz = fwdX * side * 0.5;
+            this.particles.add({
+              pos: new THREE.Vector3(car.x + fwdX * 1.1 + sx, 0.7, car.z + fwdZ * 1.1 + sz),
+              v: new THREE.Vector3(-fwdX * 1.6 + (Math.random() - 0.5) * 0.8, 2.4 + Math.random(), -fwdZ * 1.6 + (Math.random() - 0.5) * 0.8),
+              life: 3.2 + Math.random() * 1.2,
+              size0: 0.9,
+              size1: 4.2,
+              texture: smokeTexture(false),
+              opacity: 0.95,
+              drag: 0.45,
+            });
+          }
         } else {
           this.stallTimers.set(car, left);
         }
