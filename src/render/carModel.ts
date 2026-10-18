@@ -37,6 +37,7 @@ export function lookFromEquipped(equipped: Partial<Record<string, string>>): Loo
 
 // 装着中のパーツ (id 例: "engine-2") から、見た目の段階を作る (下の型)
 export interface Look {
+  model?: number; // 車種 (0 が標準)
   engine?: number;
   muffler?: number;
   tire?: number;
@@ -375,6 +376,36 @@ export function loadCarTemplate(): Promise<Template> {
 // 回るタイヤの部品を、段階の組み合わせごとに 1 つだけ作っておく
 const spinnerCache = new Map<string, THREE.Group>();
 
+// 車種ごとの後付けのエアロパーツ (モデルの座標: 前が x 負、後ろが x 正、上が y 正)
+function buildAero(aero: number): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'aero';
+  if (aero <= 0) return g;
+  const dark = new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6 });
+  const accent = new THREE.MeshStandardMaterial({ color: 0xc62828, metalness: 0.3, roughness: 0.4 });
+  const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    g.add(m);
+  };
+  // サイドスカート (両側の下)
+  if (aero >= 1) {
+    for (const z of [0.3, -0.3]) add(new THREE.BoxGeometry(1.5, 0.04, 0.05), dark, 0, -0.1, z);
+  }
+  // リアウイング (後ろの上に、支柱と翼)
+  if (aero >= 2) {
+    for (const z of [0.18, -0.18]) add(new THREE.BoxGeometry(0.04, 0.12, 0.04), dark, 0.82, 0.18, z);
+    add(new THREE.BoxGeometry(0.22, 0.03, 0.62), accent, 0.9, 0.26, 0);
+  }
+  // エアロ一式: 前のスプリッターと、屋根のスクープ
+  if (aero >= 3) {
+    add(new THREE.BoxGeometry(0.06, 0.03, 0.9), dark, -0.98, -0.12, 0);
+    add(new THREE.BoxGeometry(0.3, 0.08, 0.16), dark, 0.05, 0.3, 0);
+  }
+  return g;
+}
+
 // 車を 1 台作る (テンプレートから複製)。look は装着中のパーツの段階。読み込み前は呼べない
 export function instantiateCar(template: Template, look: Look = {}): THREE.Group {
   const group = new THREE.Group();
@@ -387,6 +418,7 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
   inner.add(buildEngine(look.engine ?? 1));
   inner.add(buildExhaust(look.muffler ?? 1));
   inner.add(buildWipers(look.window ?? 1));
+  inner.add(buildAero(look.model ?? 0));
 
   // シャシ: 上位ほど車高が低い (足回りの硬さの見た目)
   body.position.y -= ((look.chassis ?? 1) - 1) * 0.015;

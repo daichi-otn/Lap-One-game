@@ -6,6 +6,8 @@ export interface SaveData {
   owned: string[];
   equipped: Partial<Record<Slot, string>>;
   bestTime: Record<string, number>;
+  ownedCars: string[]; // 持っている車種
+  equippedCar: string; // 乗っている車種
 }
 
 export type Quality = 'low' | 'medium' | 'high';
@@ -80,6 +82,8 @@ export function newSave(): SaveData {
     owned: base.map((p) => p.id),
     equipped: Object.fromEntries(base.map((p) => [p.slot, p.id])) as Partial<Record<Slot, string>>,
     bestTime: {},
+    ownedCars: ['standard'],
+    equippedCar: 'standard',
   };
 }
 

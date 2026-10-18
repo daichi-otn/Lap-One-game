@@ -1,12 +1,13 @@
 import { createFixedStepLoop } from './game/fixedStep';
 import { Sound } from './audio/sound';
-import { lookFromEquipped } from './render/carModel';
+import { lookFromEquipped, type Look } from './render/carModel';
 import { COURSES, findCourse, type Course } from './game/courses';
 import { buildTrack } from './game/track';
 import { PLAYER_COLOR, Race } from './game/race';
 import { WEATHER, pickWeather, type Weather } from './game/weather';
 import { NEUTRAL_MODS, PARTS, computeMods, type Mods } from './game/parts';
 import { entryFee, payout } from './game/economy';
+import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
 import {
   ADMIN_ENABLED,
   loadAdmin,
@@ -176,6 +177,12 @@ function act(name: string, arg?: string): void {
       if (c) startRace(c);
       break;
     }
+    case 'buy-car':
+      buyCar(arg);
+      break;
+    case 'equip-car':
+      equipCar(arg);
+      break;
     case 'buy':
       buyPart(arg);
       break;
@@ -271,7 +278,7 @@ function showGarage(engineSwap = false): void {
     free: ADMIN_ENABLED && admin.infiniteCoin,
     color: PLAYER_COLOR,
     engineSwap,
-    look: lookFromEquipped(save.equipped),
+    look: carLook(),
   });
 }
 
@@ -288,7 +295,7 @@ function startPreview(): void {
     track,
     weather: 'sunny',
     playerMods: computeMods(save.equipped),
-    playerLook: lookFromEquipped(save.equipped),
+    playerLook: carLook(),
     aiMods: [],
   });
   world.setTrack(track);
@@ -334,14 +341,14 @@ function startRace(c: Course): void {
   course = c;
   const dev = ADMIN_ENABLED;
   weather = dev && admin.weather !== 'auto' ? admin.weather : pickWeather(c.weather);
-  const playerMods = computeMods(save.equipped);
+  const playerMods = mulMods(computeMods(save.equipped), carById(save.equippedCar).mods);
   const track = buildTrack(c);
   const cpuCount = dev ? admin.cpuCount : CPU_COUNT;
   race = new Race({
     track,
     weather,
     playerMods,
-    playerLook: lookFromEquipped(save.equipped),
+    playerLook: carLook(),
     autoDrive: settings.autoDrive,
     aiMods: makeAiMods(cpuCount),
     aiStrength: dev ? admin.cpuStrength : 1,
@@ -402,6 +409,33 @@ function finishRace(): void {
     coin: save.coin,
     time: outcome === 'dnf' || t === undefined ? null : t,
   });
+}
+
+// 車種の見た目 (装着中のパーツの段階 + 車種)
+function carLook(): Look & Record<string, number> {
+  return { ...lookFromEquipped(save.equipped), model: carIndex(save.equippedCar) };
+}
+
+// 車種を買う (値段はコイン無限のときは 0)
+function buyCar(id: string | undefined): void {
+  const car = CAR_MODELS.find((c) => c.id === id);
+  if (!car || save.ownedCars.includes(car.id)) return;
+  const price = ADMIN_ENABLED && admin.infiniteCoin ? 0 : car.price;
+  if (save.coin < price) {
+    ui.toast('コインが足りません');
+    return;
+  }
+  save.coin -= price;
+  save.ownedCars.push(car.id);
+  storeSave(save);
+  showGarage();
+}
+
+function equipCar(id: string | undefined): void {
+  if (!id || !save.ownedCars.includes(id)) return;
+  save.equippedCar = id;
+  storeSave(save);
+  showGarage();
 }
 
 function buyPart(id: string | undefined): void {

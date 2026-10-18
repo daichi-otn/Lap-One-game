@@ -1,6 +1,7 @@
 import { COURSES, type Course } from '../game/courses';
 import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
+import { CAR_MODELS, carById, mulMods } from '../game/cars';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
 import { REDLINE_RPM, REDLINE_STALL_SECONDS } from '../game/car';
 import type { Race } from '../game/race';
@@ -195,7 +196,8 @@ export class UI {
 
   showGarage(save: SaveData, opts: GarageOptions): void {
     const freeParts = opts.free;
-    const mods = computeMods(save.equipped);
+    const mods = mulMods(computeMods(save.equipped), carById(save.equippedCar).mods);
+    // 車種: 持っている車を乗り換えられる。買っていない車は、購入できる
     const statRows = (Object.keys(mods) as (keyof Mods)[])
       .map((k) => `<div class="stat"><span>${MOD_NAMES[k]}</span><b>${formatMod(mods[k])}</b></div>`)
       .join('');
@@ -214,6 +216,15 @@ export class UI {
         .join('');
       return `<section><h3>${slot.name}</h3>${items}</section>`;
     }).join('');
+    const carRows = CAR_MODELS.map((car) => {
+      const owned = save.ownedCars.includes(car.id);
+      const equipped = save.equippedCar === car.id;
+      let action = '';
+      if (equipped) action = '<span class="tag">乗車中</span>';
+      else if (owned) action = `<button class="btn-small" data-act="equip-car" data-arg="${car.id}">乗る</button>`;
+      else action = `<button class="btn-small" data-act="buy-car" data-arg="${car.id}" ${!freeParts && save.coin < car.price ? 'disabled' : ''}>購入 ${freeParts ? 0 : car.price.toLocaleString()}</button>`;
+      return `<div class="row"><span>${car.name}</span>${action}</div>`;
+    }).join('');
     this.setScreen(`
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
       <h2>ショップ・ガレージ</h2>
@@ -221,6 +232,7 @@ export class UI {
         <div class="garage-view" aria-label="自分の車"></div>
         <div class="garage-list">
           <div class="card"><h3>現在の性能 (基準 = 100%)</h3><div class="stats">${statRows}</div></div>
+          <section><h3>車種</h3>${carRows}</section>
           ${sections}
         </div>
       </div>`);
