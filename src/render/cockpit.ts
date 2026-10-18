@@ -81,7 +81,7 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   // ダッシュボード本体: 横に長く、運転席側へ少し傾いた面。上面は柔らかい素材
   // ハンドルの手前ではなく、ハンドルの向こう (前) にダッシュの面が来る
   // 左側 (運転席の外側) へ伸ばして、ダッシュの端が見えないようにする
-  addTo(softBox(3.0, 0.26, 0.5), dashMat, -0.5, 0.8, 0.95);
+  addTo(softBox(3.0, 0.16, 0.5), dashMat, -0.5, 0.84, 0.95);
   addTo(softBox(2.9, 0.06, 0.46), padMat, -0.55, 0.94, 0.9);
   // 上面のステッチ (縫い目) と、助手席側のアルミの加飾
   addTo(softBox(2.6, 0.008, 0.012), stitch, -0.5, 0.972, 0.7);
