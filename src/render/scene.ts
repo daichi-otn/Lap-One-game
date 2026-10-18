@@ -3,7 +3,7 @@ import type { Track } from '../game/track';
 import { RAIL_GAP, SAMPLES, pitLaneOffset, tangentAt } from '../game/track';
 import { REDLINE_RPM, type CarState } from '../game/car';
 import type { WeatherEffect } from '../game/weather';
-import { DEFAULT_VIEW, type FirstPersonView, type Quality } from '../game/save';
+import { DEFAULT_VIEW, DEFAULT_WHEEL, type FirstPersonView, type Quality, type WheelOffset } from '../game/save';
 import { instantiateCar, loadCarTemplate, WHEEL_SPIN_RADIUS, type CarParts } from './carModel';
 import type { Impact } from '../game/car';
 import type { NavScreen } from './cockpit';
@@ -136,6 +136,7 @@ export class World {
   private snap = true;
   private lastFirstPerson = false;
   private view: FirstPersonView = { ...DEFAULT_VIEW };
+  private wheelOffset: WheelOffset = { ...DEFAULT_WHEEL };
 
   constructor(container: HTMLElement) {
     container.appendChild(this.renderer.domElement);
@@ -397,6 +398,11 @@ export class World {
     this.view = { ...v };
   }
 
+  // ハンドルの位置の調整 (基準の位置からのずれ、m)
+  setWheelOffset(o: WheelOffset): void {
+    this.wheelOffset = { ...o };
+  }
+
   // 運転席の計器に、速さ・ギア・回転数を描く
   private drawCluster(c: NavScreen, car: CarState): void {
     const ctx = c.canvas.getContext('2d');
@@ -460,6 +466,12 @@ export class World {
       // 運転席のハンドルは、切った向きに回る
       const wheel = parts.cockpit?.userData.wheel as THREE.Object3D | undefined;
       if (wheel) wheel.rotation.z = -car.wheelTurn * 1.2;
+      const wheelRoot = parts.cockpit?.userData.wheelRoot as THREE.Object3D | undefined;
+      const wheelBase = parts.cockpit?.userData.wheelBase as THREE.Vector3 | undefined;
+      if (wheelRoot && wheelBase) {
+        const o = this.wheelOffset;
+        wheelRoot.position.set(wheelBase.x + o.x, wheelBase.y + o.y, wheelBase.z + o.z);
+      }
       const nav = parts.cockpit?.userData.nav as NavScreen | undefined;
       if (car.isPlayer && firstPerson && nav) this.drawNav(nav, car);
       const cluster = parts.cockpit?.userData.cluster as NavScreen | undefined;

@@ -223,6 +223,9 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
 
   cockpit.userData.nav = { canvas: navCanvas, texture: navTex } satisfies NavScreen;
   cockpit.userData.wheel = steering;
+  // ハンドルの位置は設定で動かせる。基準の位置と、動かす部品を覚えておく
+  cockpit.userData.wheelRoot = tilt;
+  cockpit.userData.wheelBase = new THREE.Vector3(wheelPos.x, wheelPos.y, wheelPos.z);
   cockpit.userData.cluster = { canvas: clusterCanvas, texture: clusterTex } satisfies NavScreen;
   // 内装を左右反転して、運転席を車の右側 (ドア側) に置く。文字が裏返らないように、表示のテクスチャは戻す
   cockpit.scale.x = -1;

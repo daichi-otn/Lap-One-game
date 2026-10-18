@@ -1,7 +1,7 @@
 import { COURSES, type Course } from '../game/courses';
 import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
-import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings } from '../game/save';
+import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
 import { REDLINE_RPM, REDLINE_STALL_SECONDS } from '../game/car';
 import type { Race } from '../game/race';
 import { startCarViewer, type CarViewer } from '../render/carViewer';
@@ -50,6 +50,7 @@ export interface UIHandlers {
   act(name: string, arg?: string): void;
   hold(action: Action, down: boolean): void;
   view(key: string, value: number): void;
+  wheel(key: string, value: number): void;
 }
 
 export class UI {
@@ -117,6 +118,13 @@ export class UI {
     // 視点の設定のスライダーを動かしたら、すぐ反映する
     root.addEventListener('input', (e) => {
       const el = e.target as HTMLInputElement;
+      if (el.dataset.wheel) {
+        const wv = Number(el.value);
+        this.h.wheel(el.dataset.wheel, wv);
+        const wout = root.querySelector(`[data-val="wheel-${el.dataset.wheel}"]`);
+        if (wout) wout.textContent = viewLabel('x', wv);
+        return;
+      }
       if (!el.dataset.view) return;
       const value = Number(el.value);
       this.h.view(el.dataset.view, value);
@@ -269,6 +277,14 @@ export class UI {
         <p class="note">ONにすると、スマホを左右に傾けてハンドルを切ります。構えはレース開始時の向きが「まっすぐ」になります。</p>
       </div>
       <div class="card">
+        <p>ハンドルの位置</p>
+        <p class="note">基準の位置からずらします。右が正、上が正、前が正です。</p>
+        ${wheelSlider(settings.wheel, 'x', '左右', -0.3, 0.3, 0.02)}
+        ${wheelSlider(settings.wheel, 'y', '上下', -0.2, 0.2, 0.02)}
+        ${wheelSlider(settings.wheel, 'z', '前後', -0.2, 0.2, 0.02)}
+        <div class="menu"><button class="btn" data-act="wheel-reset">ハンドルを初期位置に戻す</button></div>
+      </div>
+      <div class="card">
         <p>セーブデータ</p>
         <p class="note">所持コイン・パーツ・ベストタイムをすべて消して、最初からやり直します。</p>
         <button class="btn danger" data-act="reset">セーブデータを削除</button>
@@ -403,6 +419,10 @@ export class UI {
 function viewLabel(key: string, value: number): string {
   if (key === 'pitch') return `${value > 0 ? '+' : ''}${value}°`;
   return `${value.toFixed(2)} m`;
+}
+
+function wheelSlider(wheel: WheelOffset, key: keyof WheelOffset, label: string, min: number, max: number, step: number): string {
+  return `<label class="slider"><span>${label}: <b data-val="wheel-${key}">${viewLabel('x', wheel[key])}</b></span><input type="range" data-wheel="${key}" min="${min}" max="${max}" step="${step}" value="${wheel[key]}"></label>`;
 }
 
 function viewSlider(view: FirstPersonView, key: keyof FirstPersonView, label: string, min: number, max: number, step: number): string {

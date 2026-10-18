@@ -51,11 +51,20 @@ export interface FirstPersonView {
 }
 export const DEFAULT_VIEW: FirstPersonView = { height: 1.2, pitch: 0, depth: -0.2, side: 0.6 };
 
+// ハンドルの位置のずれ (m)。x は右が正、y は上が正、z は前が正
+export interface WheelOffset {
+  x: number;
+  y: number;
+  z: number;
+}
+export const DEFAULT_WHEEL: WheelOffset = { x: 0, y: 0, z: 0 };
+
 export interface Settings {
   quality: Quality;
   sound: boolean;
   gyro: boolean; // スマホを傾けてハンドル操作
   view: FirstPersonView;
+  wheel: WheelOffset;
 }
 
 const SAVE_KEY = 'lapone.save.v1';
@@ -93,12 +102,12 @@ export function storeSave(save: SaveData): void {
 }
 
 export function loadSettings(): Settings {
-  const base: Settings = { quality: 'medium', sound: true, gyro: false, view: { ...DEFAULT_VIEW } };
+  const base: Settings = { quality: 'medium', sound: true, gyro: false, view: { ...DEFAULT_VIEW }, wheel: { ...DEFAULT_WHEEL } };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
       const saved = JSON.parse(raw) as Partial<Settings>;
-      return { ...base, ...saved, view: { ...DEFAULT_VIEW, ...saved.view } };
+      return { ...base, ...saved, view: { ...DEFAULT_VIEW, ...saved.view }, wheel: { ...DEFAULT_WHEEL, ...saved.wheel } };
     }
   } catch {
     // 既定値を使う

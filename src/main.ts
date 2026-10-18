@@ -18,7 +18,9 @@ import {
   storeSettings,
   type AdminSettings,
   type FirstPersonView,
+  type WheelOffset,
   DEFAULT_VIEW,
+  DEFAULT_WHEEL,
   type Quality,
   type SaveData,
   type Settings,
@@ -96,7 +98,7 @@ let firstPerson = false;
 let mode: 'screen' | 'race' | 'result' | 'preview' = 'screen';
 let previewRace: Race | null = null; // 設定の後ろで見せる一人称の画面 (走らせない)
 // 設定に関係する操作は、プレビューを続ける
-const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'view-reset']);
+const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'view-reset', 'wheel-reset']);
 
 const input = new Input(() => (firstPerson = !firstPerson));
 // 前回ジャイロを使っていたら、開始を試す (iOS は許可が要るので失敗しても止めない)
@@ -112,8 +114,10 @@ const ui = new UI(document.getElementById('ui')!, {
   act,
   hold: (action: Action, down: boolean) => input.press(action, down),
   view: (key, value) => viewChange(key as keyof FirstPersonView, value),
+  wheel: (key, value) => wheelChange(key as keyof WheelOffset, value),
 });
 world.setFirstPersonView(settings.view);
+world.setWheelOffset(settings.wheel);
 
 function act(name: string, arg?: string): void {
   if (mode === 'preview' && !PREVIEW_ACTS.has(name)) stopPreview();
@@ -141,6 +145,12 @@ function act(name: string, arg?: string): void {
       break;
     case 'gyro-toggle':
       void toggleGyro();
+      break;
+    case 'wheel-reset':
+      settings = { ...settings, wheel: { ...DEFAULT_WHEEL } };
+      storeSettings(settings);
+      world.setWheelOffset(settings.wheel);
+      showSettings();
       break;
     case 'view-reset':
       settings = { ...settings, view: { ...DEFAULT_VIEW } };
@@ -284,6 +294,13 @@ function stopPreview(): void {
   previewRace = null;
   mode = 'screen';
   ui.setPreview(false);
+}
+
+// ハンドルの位置を変えたら、保存してすぐ反映する
+function wheelChange(key: keyof WheelOffset, value: number): void {
+  settings = { ...settings, wheel: { ...settings.wheel, [key]: value } };
+  storeSettings(settings);
+  world.setWheelOffset(settings.wheel);
 }
 
 // 視点の設定を変えたら、保存してすぐ反映する
