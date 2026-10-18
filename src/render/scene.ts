@@ -761,6 +761,53 @@ function buildBarriers(track: Track): THREE.Group {
       }
     }
   }
+  // 観客: 座席の段に並ぶ、簡単な人の形。同じ形はまとめて描く (乱数は固定して、毎回同じ並びにする)
+  const crowdColors = [0xe8e8e8, 0xd94848, 0x3b82c4, 0xf2c14e, 0x2e3b4e, 0x9d6fd6];
+  const people: { x: number; y: number; z: number; c: number }[] = [];
+  let seed = 7;
+  const rnd = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  for (const side of [1, -1]) {
+    for (let w = 0; w < windows; w++) {
+      const s0 = Math.round(w * span);
+      const s1 = Math.round((w + 1) * span) - 1;
+      if (s1 >= pitStart && s0 <= pitEnd) continue;
+      for (let k = 0; k < STAND_TIERS; k++) {
+        const front = half + STAND_GAP + k * 0.9;
+        const top = (k + 1) * 0.5;
+        for (let q = 0; q < 6; q++) {
+          const j = s0 + Math.floor(rnd() * (s1 - s0));
+          const c = track.pts[j];
+          const t = tangentAt(track.pts, j);
+          const o = side * (front + 0.2 + rnd() * 0.6);
+          people.push({ x: c.x - t.z * o, y: top, z: c.z + t.x * o, c: Math.floor(rnd() * crowdColors.length) });
+        }
+      }
+    }
+  }
+  const bodies = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.4, 0.8, 0.25),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }),
+    people.length,
+  );
+  const heads = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(0.14, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0xd9b08c, roughness: 0.9 }),
+    people.length,
+  );
+  people.forEach((pe, i) => {
+    dummy.position.set(pe.x, pe.y + 0.4, pe.z);
+    dummy.rotation.set(0, 0, 0);
+    dummy.updateMatrix();
+    bodies.setMatrixAt(i, dummy.matrix);
+    bodies.setColorAt(i, new THREE.Color(crowdColors[pe.c]));
+    dummy.position.set(pe.x, pe.y + 0.97, pe.z);
+    dummy.updateMatrix();
+    heads.setMatrixAt(i, dummy.matrix);
+  });
+  group.add(bodies, heads);
   return group;
 }
 
