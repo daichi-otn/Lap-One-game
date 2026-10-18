@@ -63,6 +63,7 @@ export class UI {
   private holds = new Map<number, Action>();
   private stopViewer: CarViewer | null = null;
   private root: HTMLElement;
+  private screenKind = '';
 
   constructor(
     root: HTMLElement,
@@ -294,7 +295,7 @@ export class UI {
         <p class="note">所持コイン・パーツ・ベストタイムをすべて消して、最初からやり直します。</p>
         <button class="btn danger" data-act="reset">セーブデータを削除</button>
       </div>
-      ${adminCard}`);
+      ${adminCard}`, 'settings');
   }
 
   showResult(r: RaceResult): void {
@@ -405,12 +406,16 @@ export class UI {
     this.toastTimer = window.setTimeout(() => (this.toastEl.hidden = true), 2200);
   }
 
-  private setScreen(html: string): void {
+  // kind: 同じ画面を描き直すときは、スクロールの位置を保つ
+  private setScreen(html: string, kind = ''): void {
     this.stopAnimations();
     this.screen.classList.remove('title-photo');
+    const keep = kind !== '' && kind === this.screenKind;
+    const top = this.screen.scrollTop;
     this.screen.innerHTML = html;
     this.screen.hidden = false;
-    this.screen.scrollTop = 0;
+    this.screen.scrollTop = keep ? top : 0;
+    this.screenKind = kind;
   }
 
   // 画面が変わるとき、背景の描画やガレージの車の描画を止める
