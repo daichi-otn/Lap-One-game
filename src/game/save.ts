@@ -49,7 +49,7 @@ export interface FirstPersonView {
   depth: number;
   side: number;
 }
-export const DEFAULT_VIEW: FirstPersonView = { height: 1.2, pitch: 0, depth: -0.2, side: -0.4 };
+export const DEFAULT_VIEW: FirstPersonView = { height: 1.2, pitch: 0, depth: -0.2, side: 0.4 };
 
 export interface Settings {
   quality: Quality;
