@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TIER_COLORS, tierColor } from './tierColors';
 
 // 一人称で見える運転席の内装 (ダッシュボード、ハンドル、センター画面、ドア、シート)。
 // 座標は車の前方が +Z、左右が X、高さが Y。運転席は x = -0.4 の位置 (カメラもここに置く)
@@ -71,10 +72,10 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   const cockpit = new THREE.Group();
 
   // 素材: 黒のソフトレザー、ダッシュの樹脂、アルミのアクセント、発光する表示
-  const seatColor = seatTier === 1 ? 0x23262a : seatTier === 2 ? 0x2a2d33 : 0x17191c;
+  const seatColor = tierColor(TIER_COLORS.seat, seatTier);
   // 革: 少し光沢があり、シボの凹凸が見える
   const leather = new THREE.MeshStandardMaterial({ color: seatColor, roughness: 0.5, bumpMap: leatherGrain(), bumpScale: 0.8 });
-  const seatAccent = new THREE.MeshStandardMaterial({ color: seatTier === 1 ? seatColor : 0xc62828, roughness: 0.6 });
+  const seatAccent = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS.seatAccent, seatTier), roughness: 0.6 });
   const dashMat = new THREE.MeshStandardMaterial({ color: 0x17191c, roughness: 0.7 });
   const padMat = new THREE.MeshStandardMaterial({ color: 0x25282d, roughness: 0.95 }); // ソフトタッチの上面
   const trimMat = new THREE.MeshStandardMaterial({ color: 0x0f1113, roughness: 0.6 }); // 黒い内張り
@@ -207,7 +208,7 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
     addTo(softBox(0.52, 0.16, 0.56), leather, x, 0.42, -0.18);
     // 座面の縫い目 (ステッチ)
     for (const dz of [-0.2, 0.2]) addTo(softBox(0.44, 0.004, 0.006), stitch, x, 0.503, -0.18 + dz);
-    if (seatTier >= 2) {
+    if (seatTier >= 5) {
       for (const side of [1, -1]) addTo(softBox(0.06, 0.28, 0.46), seatAccent, x + side * 0.27, 0.6, -0.42, -0.08);
     }
     addTo(softBox(0.52, 0.8, 0.14), leather, x, 0.9, -0.45, -0.12);

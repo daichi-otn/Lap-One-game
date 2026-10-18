@@ -62,60 +62,59 @@ interface Tier {
   mods: Partial<Mods>;
 }
 
-const STOCK = (name: string): Tier => ({ name, price: 0, mods: {} });
+// 段階 1〜10 の性能の増え方。1 が標準 (補正なし)、10 が最上位
+const LADDER = (max: number, i: number): number => 1 + (max - 1) * (i / 9);
+// 価格: 1 は無料。段階が上がるほど高くなる
+const priceAt = (i: number): number => (i === 0 ? 0 : Math.round((90 * i ** 1.6) / 10) * 10);
 
-const TIERS: Record<Slot, Tier[]> = {
-  engine: [
-    STOCK('標準エンジン'),
-    { name: 'スポーツエンジン', price: 800, mods: { topSpeed: 1.08, accel: 1.05 } },
-    { name: 'レーシングエンジン', price: 2000, mods: { topSpeed: 1.18, accel: 1.1 } },
-  ],
-  frame: [
-    STOCK('標準フレーム'),
-    { name: '強化フレーム', price: 800, mods: { durability: 1.15, turn: 0.97 } },
-    { name: '軽量カーボンフレーム', price: 2000, mods: { durability: 1.35, turn: 0.99 } },
-  ],
-  chassis: [
-    STOCK('標準シャシ'),
-    { name: 'スポーツサス', price: 700, mods: { turn: 1.06, grip: 1.03 } },
-    { name: 'レーシングサス', price: 1800, mods: { turn: 1.12, grip: 1.06 } },
-  ],
-  turbo: [
-    STOCK('ターボなし'),
-    { name: 'ツインターボ', price: 900, mods: { accel: 1.1 } },
-    { name: '大型ターボ', price: 2200, mods: { accel: 1.18, topSpeed: 1.03 } },
-  ],
-  muffler: [
-    STOCK('標準マフラー'),
-    { name: 'スポーツマフラー', price: 300, mods: { topSpeed: 1.02 } },
-    { name: 'チタンマフラー', price: 900, mods: { topSpeed: 1.03, accel: 1.02 } },
-  ],
-  tire: [
-    STOCK('標準タイヤ'),
-    { name: 'ハイグリップタイヤ', price: 600, mods: { grip: 1.08, rainGrip: 1.05 } },
-    { name: 'レインタイヤ', price: 1000, mods: { grip: 1.02, rainGrip: 1.3 } },
-  ],
-  brake: [
-    STOCK('標準パッド'),
-    { name: 'スポーツパッド', price: 500, mods: { brake: 1.1 } },
-    { name: 'レーシングパッド', price: 1500, mods: { brake: 1.2 } },
-  ],
-  seat: [
-    STOCK('標準シート'),
-    { name: 'バケットシート', price: 400, mods: { turn: 1.02, grip: 1.01 } },
-    { name: 'フルバケット', price: 1100, mods: { turn: 1.04, grip: 1.02 } },
-  ],
-  handle: [
-    STOCK('標準ハンドル'),
-    { name: 'スポーツハンドル', price: 300, mods: { turn: 1.05 } },
-    { name: 'レーシングハンドル', price: 900, mods: { turn: 1.1 } },
-  ],
-  window: [
-    STOCK('標準窓'),
-    { name: 'ワイパー付き窓', price: 500, mods: { vision: 1.1 } },
-    { name: '強化ガラス', price: 1200, mods: { vision: 1.2 } },
-  ],
+const SPECS: Record<Slot, { names: string[]; mods: (i: number) => Partial<Mods> }> = {
+  engine: {
+    names: ['1.0L 直3', '1.3L 直4', '1.6L 直4 ターボ', '2.0L 直4 ターボ', '2.5L 直5', '3.0L V6 ツインターボ', '3.8L V8', '4.4L V8 ツインターボ', '5.0L V10', '6.0L W12'],
+    mods: (i) => ({ topSpeed: LADDER(1.22, i), accel: LADDER(1.15, i) }),
+  },
+  frame: {
+    names: ['スチールフレーム', '強化スチール', 'アルミフレーム', '軽量アルミ', 'クロモリパイプ', 'スペースフレーム', 'ハイブリッドフレーム', '軽量カーボン', 'カーボンモノコック', 'チタンモノコック'],
+    mods: (i) => ({ durability: LADDER(1.5, i), turn: LADDER(1.02, i) }),
+  },
+  chassis: {
+    names: ['標準サスペンション', 'スポーツサス', 'ダブルウィッシュボーン', 'エアサス', '車高調整式サス', 'アクティブサス', 'ストラット強化', 'レーシングサス', 'ダウンフォース付きサス', '競技用フルアジャスタブル'],
+    mods: (i) => ({ turn: LADDER(1.15, i), grip: LADDER(1.08, i) }),
+  },
+  turbo: {
+    names: ['ターボなし', 'シングルターボ', 'ツインターボ', 'ツインスクロールターボ', '可変ジオメトリターボ', 'インタークーラー付き大型ターボ', '二段ターボ', 'ハイフロー大型ターボ', '電動アシストターボ', 'レース用ツインターボ'],
+    mods: (i) => ({ accel: LADDER(1.2, i), topSpeed: LADDER(1.04, i) }),
+  },
+  muffler: {
+    names: ['標準マフラー', 'スポーツマフラー', 'デュアルマフラー', 'ステンレスマフラー', 'チタンマフラー', 'カーボンマフラー', 'サイレンサーなし', 'ドラッグ用マフラー', 'レーシング4本出し', 'ワンオフ大口径マフラー'],
+    mods: (i) => ({ topSpeed: LADDER(1.05, i), accel: LADDER(1.03, i) }),
+  },
+  tire: {
+    names: ['標準タイヤ', 'スポーツタイヤ', 'ハイグリップタイヤ', 'ソフトコンパウンド', 'ウェットタイヤ', 'レインタイヤ', 'オールウェザー', 'ミディアムタイヤ', 'スーパーソフト', 'レース用スリック'],
+    mods: (i) => ({ grip: LADDER(1.12, i), rainGrip: LADDER(1.35, i) }),
+  },
+  brake: {
+    names: ['標準パッド', 'スポーツパッド', 'セラミックパッド', 'メタルパッド', 'ドリルドローター', 'レーシングパッド', 'ベンチレーテッド', 'カーボンパッド', '耐熱レーシングパッド', '競技用フルカーボン'],
+    mods: (i) => ({ brake: LADDER(1.25, i) }),
+  },
+  seat: {
+    names: ['標準シート', 'ファブリックシート', 'レザーシート', 'スポーツシート', 'バケットシート', 'フルバケット', 'ハーネス付きバケット', 'カーボンバケット', 'レーシングシート', '競技用フルハーネス'],
+    mods: (i) => ({ turn: LADDER(1.05, i), grip: LADDER(1.03, i) }),
+  },
+  handle: {
+    names: ['標準ハンドル', '本革ハンドル', 'スポーツハンドル', 'マルチファンクション', '太径ハンドル', '小径ハンドル', 'カーボンハンドル', 'レーシングハンドル', 'ステアリングダンパー付き', '競技用スリム'],
+    mods: (i) => ({ turn: LADDER(1.12, i) }),
+  },
+  window: {
+    names: ['標準窓', 'UVカットガラス', '断熱ガラス', 'ワイパー付き窓', '撥水ガラス', '強化ガラス', 'スモーク窓', 'ヘッドアップ付き', '超強化ガラス', 'レース用ポリカ窓'],
+    mods: (i) => ({ vision: LADDER(1.25, i) }),
+  },
 };
+
+const TIERS = {} as Record<Slot, Tier[]>;
+for (const { id } of SLOTS) {
+  const spec = SPECS[id];
+  TIERS[id] = spec.names.map((name, i) => ({ name, price: priceAt(i), mods: i === 0 ? {} : spec.mods(i) }));
+}
 
 export interface Part {
   id: string;

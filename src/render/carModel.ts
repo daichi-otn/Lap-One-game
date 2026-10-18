@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildCockpit } from './cockpit';
+import { TIER_COLORS, tierColor } from './tierColors';
 
 // 車のモデル: "Midnight Blue Sports Car" by Nathan Kiplinger (CC0, SummerEngine) を使う
 // 前方は +Z。ボンネットは蝶番の周りで開き、タイヤは車体と別に回る
@@ -175,7 +176,7 @@ function buildSpinner(look: Look = {}): THREE.Group {
   const tireGeo = new THREE.LatheGeometry(pts, 40);
   tireGeo.rotateX(Math.PI / 2);
   // タイヤ: 上位ほど濃いグリップのゴム。リムは上位で明るく
-  const tireColor = [0x15171a, 0x1f2227, 0x2a2d33][tireTier - 1] ?? 0x15171a;
+  const tireColor = tierColor(TIER_COLORS.tire, tireTier);
   const tire = new THREE.Mesh(
     tireGeo,
     new THREE.MeshPhysicalMaterial({ color: tireColor, roughness: 0.82, metalness: 0, sheen: 0.2, sheenColor: 0x333840, side: THREE.DoubleSide }),
@@ -184,12 +185,12 @@ function buildSpinner(look: Look = {}): THREE.Group {
   spinner.add(tire);
 
   const alloy = new THREE.MeshPhysicalMaterial({
-    color: tireTier === 3 ? 0xe6eaf0 : 0xc4cad2,
+    color: tierColor(TIER_COLORS.rim, tireTier),
     metalness: 0.95,
-    roughness: tireTier === 3 ? 0.12 : 0.22,
+    roughness: tireTier >= 6 ? 0.12 : 0.22,
     clearcoat: 0.4,
   });
-  const dark = new THREE.MeshStandardMaterial({ color: tireTier === 2 ? 0x1c2026 : 0x2b2f35, metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide });
+  const dark = new THREE.MeshStandardMaterial({ color: tireTier % 2 === 0 ? 0x1c2026 : 0x2b2f35, metalness: 0.7, roughness: 0.4, side: THREE.DoubleSide });
   const face = W * 0.46;
   const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.66 * R, 0.66 * R, W * 0.9, 40, 1, true), dark);
   barrel.rotation.x = Math.PI / 2;
@@ -205,7 +206,7 @@ function buildSpinner(look: Look = {}): THREE.Group {
   disc.position.z = face * 0.35;
   spinner.add(disc);
   // キャリパー: 標準は灰色、上位は黄色、最上位は赤
-  const caliperColor = [0x7a808a, 0xffc107, 0xd62a2a][brakeTier - 1] ?? 0x7a808a;
+  const caliperColor = tierColor(TIER_COLORS.caliper, brakeTier);
   const caliper = new THREE.Mesh(
     new THREE.BoxGeometry(0.1 * R, 0.26 * R, 0.07 * R),
     new THREE.MeshStandardMaterial({ color: caliperColor, roughness: 0.4, metalness: 0.2 }),
@@ -246,9 +247,9 @@ function buildExhaust(tier: number): THREE.Group {
   const g = new THREE.Group();
   g.name = 'muffler';
   // 出口の半径 (モデルの座標。実寸で約 4〜5cm の半径)
-  const radius = [0.016, 0.019, 0.022][tier - 1] ?? 0.016;
+  const radius = 0.016 + 0.0007 * (tier - 1);
   const mat = new THREE.MeshStandardMaterial({
-    color: [0x2a2d33, 0xc8ccd2, 0x7f8fa6][tier - 1] ?? 0x2a2d33,
+    color: tierColor(TIER_COLORS.exhaust, tier),
     metalness: tier === 1 ? 0.6 : 0.95,
     roughness: tier === 1 ? 0.5 : 0.2,
   });
@@ -268,7 +269,7 @@ function buildWipers(tier: number): THREE.Group {
   g.name = 'wipers';
   if (tier < 2) return g;
   const arm = new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.6 });
-  const count = tier >= 3 ? 2 : 1;
+  const count = tier >= 6 ? 2 : 1;
   for (let i = 0; i < count; i++) {
     const blade = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.006, 0.26), arm);
     blade.position.set(-0.44, 0.125, i === 0 ? -0.1 : 0.12);
@@ -285,12 +286,10 @@ function buildEngine(tier = 1): THREE.Group {
   const block = new THREE.MeshStandardMaterial({ color: 0x2a2e35, metalness: 0.7, roughness: 0.45 });
   const cover = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 0.85, roughness: 0.3 });
   // ヘッドカバー: 標準は暗い色、上位は赤
-  const red = tier >= 2
-    ? new THREE.MeshStandardMaterial({ color: 0xc62828, metalness: 0.4, roughness: 0.35 })
-    : new THREE.MeshStandardMaterial({ color: 0x3b4048, metalness: 0.7, roughness: 0.4 });
+  const red = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS.cover, tier), metalness: tier >= 2 ? 0.4 : 0.7, roughness: tier >= 2 ? 0.35 : 0.4 });
   const chrome = new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: 1, roughness: 0.2 });
   // 吸気: 最上位はクロームのインテーク
-  const intake = tier >= 3
+  const intake = tier >= 6
     ? new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: 1, roughness: 0.2 })
     : new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.7 });
   const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, rz = 0) => {
