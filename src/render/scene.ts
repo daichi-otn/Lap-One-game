@@ -109,6 +109,9 @@ class Explosion {
   }
 }
 
+// 一人称で、カメラを下に向ける角度 (ハンドルを見せるため)
+const FIRST_PERSON_PITCH = (28 * Math.PI) / 180;
+
 export class World {
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
   private readonly scene = new THREE.Scene();
@@ -448,7 +451,8 @@ export class World {
       // 目の位置は座席の後ろ寄り。ダッシュボードとハンドルが視界の下に入るように、画角を少し広げる
       this.setFov(72);
       this.camera.position.set(player.x - fx * 0.2 - rx * 0.4, 1.5, player.z - fz * 0.2 - rz * 0.4);
-      this.camera.lookAt(player.x + fx * 30, 1.3, player.z + fz * 30);
+      // 少し下を向いて、ハンドルが画面下の操作ボタンの上に来るようにする
+      this.camera.lookAt(player.x + fx * 30, 1.5 - 30 * Math.tan(FIRST_PERSON_PITCH), player.z + fz * 30);
       this.camPos.copy(this.camera.position);
     } else {
       this.setFov(60);

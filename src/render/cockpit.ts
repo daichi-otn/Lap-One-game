@@ -81,21 +81,22 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   };
 
   // ダッシュボード本体: 横に長く、運転席側へ少し傾いた面。上面は柔らかい素材
-  addTo(softBox(1.9, 0.26, 0.5), dashMat, 0, 0.8, 0.72);
-  addTo(softBox(1.8, 0.06, 0.46), padMat, 0, 0.94, 0.66);
+  // ハンドルの手前ではなく、ハンドルの向こう (前) にダッシュの面が来る
+  addTo(softBox(1.9, 0.26, 0.5), dashMat, 0, 0.8, 0.95);
+  addTo(softBox(1.8, 0.06, 0.46), padMat, 0, 0.94, 0.9);
   // 上面のステッチ (縫い目) と、助手席側のアルミの加飾
-  addTo(softBox(1.6, 0.008, 0.012), stitch, 0, 0.972, 0.45);
+  addTo(softBox(1.6, 0.008, 0.012), stitch, 0, 0.972, 0.7);
   addTo(softBox(0.7, 0.012, 0.02), alu, 0.55, 0.955, 0.9);
   // 計器の覆い (ハンドルの上に出る黒いフード) と、その中の 2 つの丸い計器
-  addTo(softBox(0.7, 0.12, 0.3), trimMat, -0.4, 1.0, 0.36, -0.2);
+  addTo(softBox(0.7, 0.1, 0.3), trimMat, -0.4, 1.1, 0.7, -0.2);
   for (const x of [-0.56, -0.24]) {
     const face = new THREE.Mesh(new THREE.CircleGeometry(0.095, 40), dial);
-    face.position.set(x, 1.02, 0.25);
-    face.rotation.x = -0.2;
+    face.position.set(x, 1.04, 0.52);
+    face.rotation.x = -0.5;
     cockpit.add(face);
     const edge = new THREE.Mesh(new THREE.RingGeometry(0.09, 0.104, 40), ring);
-    edge.position.set(x, 1.02, 0.252);
-    edge.rotation.x = -0.2;
+    edge.position.set(x, 1.04, 0.522);
+    edge.rotation.x = -0.5;
     cockpit.add(edge);
   }
 
@@ -105,22 +106,23 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   screenPlane.position.set(0, 1.09, 0.86 - 0.025);
   screenPlane.rotation.set(-0.35, Math.PI, 0);
   cockpit.add(screenPlane);
-  addTo(softBox(0.46, 0.14, 0.18), dashMat, 0, 0.84, 0.82);
+  addTo(softBox(0.46, 0.14, 0.18), dashMat, 0, 0.84, 0.92);
   for (const x of [-0.13, -0.04, 0.04, 0.13]) {
-    addTo(new THREE.CylinderGeometry(0.022, 0.022, 0.02, 20), alu, x, 0.84, 0.92, Math.PI / 2);
+    addTo(new THREE.CylinderGeometry(0.022, 0.022, 0.02, 20), alu, x, 0.84, 1.02, Math.PI / 2);
   }
 
   // 左右の吹き出し口 (横のスリット)
   for (const x of [-0.7, 0.7]) {
-    addTo(softBox(0.42, 0.07, 0.1), trimMat, x, 0.86, 0.8);
-    for (const dy of [-0.02, 0, 0.02]) addTo(softBox(0.36, 0.008, 0.02), alu, x, 0.86 + dy, 0.86);
+    addTo(softBox(0.42, 0.07, 0.1), trimMat, x, 0.86, 0.95);
+    for (const dy of [-0.02, 0, 0.02]) addTo(softBox(0.36, 0.008, 0.02), alu, x, 0.86 + dy, 1.0);
   }
 
   // ステアリング: 3本スポーク、軸は運転手の方へ傾ける
   const wheelPos = { x: -0.4, y: 0.88, z: 0.45 };
   const steering = new THREE.Group();
   steering.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
-  steering.rotation.x = -0.9;
+  // 輪の面は運転手の方を向き、上部がダッシュ側へ少し倒れている
+  steering.rotation.x = 0.45;
   // リムは楕円に近いので、横を少し広くする
   const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.024, 12, 40), leather);
   rim.scale.set(1, 0.9, 1);
@@ -151,7 +153,7 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   }
   cockpit.add(steering);
   // ハンドルの軸 (ステアリングコラム)
-  addTo(new THREE.CylinderGeometry(0.03, 0.03, 0.45, 16), dashMat, -0.4, 0.8, 0.66, -1.1);
+  addTo(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 16), dashMat, -0.4, 0.84, 0.6, Math.PI / 2 - 0.2);
 
   // センターコンソールとシフトレバー、サイドブレーキ
   addTo(softBox(0.24, 0.18, 0.72), trimMat, 0, 0.5, 0.05);
