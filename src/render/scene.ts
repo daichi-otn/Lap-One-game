@@ -682,6 +682,8 @@ function buildRoad(track: Track): THREE.Group {
 
   // コースの両側のガードレールと、外側の観客席
   group.add(buildBarriers(track));
+  // コースの周り: 木、照明、遠くの建物
+  group.add(buildScenery(track));
 
   // ピット: 道の右側から分かれる、ピットへの道と、横に建つ建物
   group.add(buildPitRoad(track));
@@ -696,6 +698,96 @@ function buildRoad(track: Track): THREE.Group {
   line.position.copy(track.pts[0]).setY(0.05);
   line.rotation.y = Math.atan2(t.x, t.z);
   group.add(line);
+  return group;
+}
+
+// 同じ並びになる乱数 (コースごとに決まる)
+function seeded(seed: number): () => number {
+  let a = Math.floor(seed) >>> 0;
+  return () => {
+    a = (a * 1664525 + 1013904223) >>> 0;
+    return a / 4294967296;
+  };
+}
+
+// コースの周りの景色: 木、照明の柱、遠くの建物。道と観客席から離して置く
+function buildScenery(track: Track): THREE.Group {
+  const group = new THREE.Group();
+  const half = track.course.width / 2;
+  const rnd = seeded(track.length * 13 + 7);
+  const pitStart = track.pitFrom - 40;
+  const pitEnd = track.pitTo + 40;
+  const dummy = new THREE.Object3D();
+
+  // 木: 幹と葉 (それぞれを、まとめて描く)
+  const treeMats: THREE.Matrix4[] = [];
+  for (let i = 0; i < SAMPLES; i += 3) {
+    if (i >= pitStart && i <= pitEnd) continue;
+    const p = track.pts[i];
+    const t = tangentAt(track.pts, i);
+    for (const side of [1, -1]) {
+      for (let q = 0; q < 2; q++) {
+        const o = side * (half + 22 + rnd() * 40);
+        dummy.position.set(p.x - t.z * o, 0, p.z + t.x * o);
+        const sc = 0.8 + rnd() * 0.8;
+        dummy.scale.set(sc, sc, sc);
+        dummy.rotation.set(0, rnd() * Math.PI * 2, 0);
+        dummy.updateMatrix();
+        treeMats.push(dummy.matrix.clone());
+      }
+    }
+  }
+  const trunkGeo = new THREE.CylinderGeometry(0.4, 0.5, 3, 6);
+  trunkGeo.translate(0, 1.5, 0);
+  const crownGeo = new THREE.ConeGeometry(2.6, 6, 7);
+  crownGeo.translate(0, 6, 0);
+  const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0x5a3d28, roughness: 0.9 }), treeMats.length);
+  const crowns = new THREE.InstancedMesh(crownGeo, new THREE.MeshStandardMaterial({ color: 0x2e6b3a, roughness: 0.9 }), treeMats.length);
+  treeMats.forEach((m, i) => {
+    trunks.setMatrixAt(i, m);
+    crowns.setMatrixAt(i, m);
+  });
+  group.add(trunks, crowns);
+
+  // 照明の柱: 道の両側に、一定間隔で
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x59636d, metalness: 0.6, roughness: 0.5 });
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0xfff1c2, emissive: 0xffe9a8, emissiveIntensity: 0.6 });
+  for (let i = 0; i < SAMPLES; i += 90) {
+    if (i >= pitStart && i <= pitEnd) continue;
+    const p = track.pts[i];
+    const t = tangentAt(track.pts, i);
+    for (const side of [1, -1]) {
+      const o = side * (half + 11);
+      const x = p.x - t.z * o;
+      const z = p.z + t.x * o;
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 12, 6), poleMat);
+      pole.position.set(x, 6, z);
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.4), lampMat);
+      lamp.position.set(x, 12, z);
+      group.add(pole, lamp);
+    }
+  }
+
+  // 遠くの建物: 道から離れた所に、色の違う箱を並べる
+  const bldgs = 90;
+  const bldgMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }), bldgs);
+  const colors = [0x6f7c8a, 0x8a94a0, 0x5a6470, 0x9aa3ad, 0x7a6f66];
+  const tmp = new THREE.Color();
+  for (let k = 0; k < bldgs; k++) {
+    const i = Math.floor(rnd() * SAMPLES);
+    const p = track.pts[i];
+    const t = tangentAt(track.pts, i);
+    const o = (rnd() < 0.5 ? 1 : -1) * (half + 90 + rnd() * 80);
+    const w = 8 + rnd() * 14;
+    const h = 10 + rnd() * 40;
+    dummy.position.set(p.x - t.z * o, h / 2, p.z + t.x * o);
+    dummy.scale.set(w, h, w * (0.6 + rnd() * 0.8));
+    dummy.rotation.set(0, 0, 0);
+    dummy.updateMatrix();
+    bldgMesh.setMatrixAt(k, dummy.matrix);
+    bldgMesh.setColorAt(k, tmp.setHex(colors[k % colors.length]));
+  }
+  group.add(bldgMesh);
   return group;
 }
 
