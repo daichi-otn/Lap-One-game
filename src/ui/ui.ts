@@ -250,6 +250,11 @@ export class UI {
         <div class="menu"><button class="btn ${settings.sound ? 'active' : ''}" data-act="sound-toggle">効果音・エンジン音: ${settings.sound ? 'ON' : 'OFF'}</button></div>
       </div>
       <div class="card">
+        <p>ハンドル</p>
+        <div class="menu"><button class="btn ${settings.gyro ? 'active' : ''}" data-act="gyro-toggle">スマホを傾けて操作: ${settings.gyro ? 'ON' : 'OFF'}</button></div>
+        <p class="note">ONにすると、スマホを左右に傾けてハンドルを切ります。構えはレース開始時の向きが「まっすぐ」になります。</p>
+      </div>
+      <div class="card">
         <p>セーブデータ</p>
         <p class="note">所持コイン・パーツ・ベストタイムをすべて消して、最初からやり直します。</p>
         <button class="btn danger" data-act="reset">セーブデータを削除</button>

@@ -45,6 +45,7 @@ export function storeAdmin(admin: AdminSettings): void {
 export interface Settings {
   quality: Quality;
   sound: boolean;
+  gyro: boolean; // スマホを傾けてハンドル操作
 }
 
 const SAVE_KEY = 'lapone.save.v1';
@@ -84,11 +85,11 @@ export function storeSave(save: SaveData): void {
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { quality: 'medium', sound: true, ...(JSON.parse(raw) as Partial<Settings>) };
+    if (raw) return { quality: 'medium', sound: true, gyro: false, ...(JSON.parse(raw) as Partial<Settings>) };
   } catch {
     // 既定値を使う
   }
-  return { quality: 'medium', sound: true };
+  return { quality: 'medium', sound: true, gyro: false };
 }
 
 export function storeSettings(settings: Settings): void {

@@ -1,3 +1,5 @@
+import { Gyro } from './gyro';
+
 export type Action = 'left' | 'right' | 'gas' | 'brake' | 'nitro';
 
 export interface Controls {
@@ -24,6 +26,7 @@ const KEY_ACTIONS: Record<string, Action> = {
 export class Input {
   private held = new Set<Action>();
   private steer = 0;
+  readonly gyro = new Gyro();
 
   constructor(onCameraKey: () => void) {
     window.addEventListener('keydown', (e) => {
@@ -48,7 +51,9 @@ export class Input {
 
   // ハンドルは急に切らず、目標値へ滑らかに寄せる
   poll(dt: number): Controls {
-    const target = (this.held.has('right') ? 1 : 0) - (this.held.has('left') ? 1 : 0);
+    const tilt = this.gyro.steer();
+    // ジャイロで傾けているときは傾きを優先し、そうでなければ矢印キーやボタン
+    const target = tilt !== 0 ? tilt : (this.held.has('right') ? 1 : 0) - (this.held.has('left') ? 1 : 0);
     this.steer += (target - this.steer) * Math.min(1, dt * 10);
     return { steer: this.steer, gas: this.held.has('gas'), brake: this.held.has('brake'), nitro: this.held.has('nitro') };
   }

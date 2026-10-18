@@ -58,6 +58,15 @@ let firstPerson = false;
 let mode: 'screen' | 'race' | 'result' = 'screen';
 
 const input = new Input(() => (firstPerson = !firstPerson));
+// 前回ジャイロを使っていたら、開始を試す (iOS は許可が要るので失敗しても止めない)
+if (settings.gyro) {
+  void input.gyro.start().then((ok) => {
+    if (!ok) {
+      settings = { ...settings, gyro: false };
+      storeSettings(settings);
+    }
+  });
+}
 const ui = new UI(document.getElementById('ui')!, {
   act,
   hold: (action: Action, down: boolean) => input.press(action, down),
@@ -85,6 +94,9 @@ function act(name: string, arg?: string): void {
     case 'settings':
       mode = 'screen';
       showSettings();
+      break;
+    case 'gyro-toggle':
+      void toggleGyro();
       break;
     case 'sound-toggle':
       settings = { ...settings, sound: !settings.sound };
@@ -116,6 +128,23 @@ function act(name: string, arg?: string): void {
       resetSave();
       break;
   }
+}
+
+// ジャイロ操作の ON/OFF。iOS は許可を求めるので、ボタンを押したときに開始する
+async function toggleGyro(): Promise<void> {
+  if (settings.gyro) {
+    input.gyro.stop();
+    settings = { ...settings, gyro: false };
+  } else {
+    const ok = await input.gyro.start();
+    if (!ok) {
+      ui.toast('ジャイロが使えません（端末の対応かブラウザの許可を確認してください）');
+      return;
+    }
+    settings = { ...settings, gyro: true };
+  }
+  storeSettings(settings);
+  showSettings();
 }
 
 // セーブデータを初期状態に戻す (誤操作を防ぐため確認を取る)
@@ -219,6 +248,7 @@ function startRace(c: Course): void {
   stallShown = false;
   dnfAt = 0;
   firstPerson = false;
+  input.gyro.calibrate();
   mode = 'race';
   ui.showHud();
 }
