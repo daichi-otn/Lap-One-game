@@ -11,7 +11,9 @@ export class Gyro {
   private onEvent = (e: DeviceOrientationEvent): void => {
     // 横持ちは、ハンドルのように画面の面に垂直な軸で回すので alpha (360 度でつながる)。
     // 縦持ちは、左右に傾ける gamma を使う
-    const angle = screen.orientation?.angle ?? 0;
+    // 向きが取れない端末 (古い iOS など) は、古い方法と画面の縦横比で判断する
+    const legacy = (window as unknown as { orientation?: number }).orientation;
+    const angle = screen.orientation?.angle ?? legacy ?? (window.innerWidth > window.innerHeight ? 90 : 0);
     const landscape = angle === 90 || angle === 270 || angle === -90;
     this.wrapped = landscape;
     const v = angle === 90 ? e.alpha : landscape ? -(e.alpha ?? 0) : e.gamma;
