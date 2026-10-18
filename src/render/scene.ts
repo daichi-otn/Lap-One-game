@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Track } from '../game/track';
-import { SAMPLES, pitLaneOffset, tangentAt } from '../game/track';
+import { RAIL_GAP, SAMPLES, pitLaneOffset, tangentAt } from '../game/track';
 import { REDLINE_RPM, type CarState } from '../game/car';
 import type { WeatherEffect } from '../game/weather';
 import { DEFAULT_VIEW, type FirstPersonView, type Quality } from '../game/save';
@@ -678,7 +678,6 @@ function buildRoad(track: Track): THREE.Group {
 }
 
 // ガードレールと観客席。どちらも中心線に沿った帯 (ribbon) を積み上げて作る
-const RAIL_GAP = 2.5; // 道の端からガードレールまで
 const STAND_GAP = 7; // 道の端から観客席の最前列まで
 const STAND_TIERS = 8;
 

@@ -1,6 +1,6 @@
 import type { Mods } from './parts';
 import { BASE } from './physics';
-import { nearestIndex, pitLaneOffset, type Track } from './track';
+import { CAR_HALF_WIDTH, inPitGap, nearestIndex, pitLaneOffset, RAIL_GAP, type Track } from './track';
 
 // 時速 200km/h (約 55.6m/s) を超えて壁にぶつかると、一瞬で大破する
 const WALL_KO_SPEED = 200 / 3.6;
@@ -157,8 +157,12 @@ export function stepCar(car: CarState, input: CarInput, dt: number, env: Env, tr
   car.z += fz * car.speed * dt - fx * wind;
 
   // 壁 (コース幅 + 4) の外には出られない。ぶつかると減速してダメージ
-  const after = track.pts[nearestIndex(track, car.x, car.z)];
-  const wallDist = half + 4 + pitLaneOffset(track, nearestIndex(track, car.x, car.z));
+  const idx = nearestIndex(track, car.x, car.z);
+  const after = track.pts[idx];
+  // ガードレールの内側まで。ピットの区間は、レールを切っているので道の外まで行ける
+  const wallDist = inPitGap(track, idx)
+    ? half + 4 + pitLaneOffset(track, idx)
+    : half + RAIL_GAP - CAR_HALF_WIDTH;
   const dx = car.x - after.x;
   const dz = car.z - after.z;
   const off = Math.hypot(dx, dz);

@@ -55,6 +55,16 @@ export function tangentAt(pts: THREE.Vector3[], i: number): THREE.Vector3 {
 
 // 位置に最も近いサンプル番号 (コース数が少ないので総当たりで十分)
 // ピットの分かれ道: 道の右側へのずれ量 (道の中心からの距離)。区間の両端で 0、中ほどで最大
+// ガードレールの位置 (道の端から) と、車の幅の半分。レールの内側に車の中心が来るまで
+export const RAIL_GAP = 2.5;
+export const CAR_HALF_WIDTH = 0.9;
+
+// ピットの入口・出口の前後で、ガードレールを切っている区間
+export function inPitGap(track: Track, i: number): boolean {
+  const j = ((i % SAMPLES) + SAMPLES) % SAMPLES;
+  return j >= track.pitFrom - 20 && j <= track.pitTo + 20;
+}
+
 export function pitLaneOffset(track: Track, i: number): number {
   const n = track.pitTo - track.pitFrom;
   const j = ((i % SAMPLES) + SAMPLES) % SAMPLES;
