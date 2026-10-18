@@ -156,7 +156,7 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   // 傾き (tilt) の中で、ハンドルだけが回る (spin)。輪の面は運転手の方を向き、上部がダッシュ側へ少し倒れている
   const tilt = new THREE.Group();
   tilt.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
-  tilt.rotation.x = 0.45;
+  tilt.rotation.x = 0.15; // 運転手の方を向く (下を向かないように、傾きを小さく)
   cockpit.add(tilt);
   // リムは楕円に近いので、横を少し広くする
   const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.024, 12, 40), leather);
