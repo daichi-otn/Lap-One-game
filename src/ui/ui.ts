@@ -269,16 +269,16 @@ export class UI {
       </div>
       <div class="card">
         <p>音</p>
-        <div class="menu"><button class="btn ${settings.sound ? 'active' : ''}" data-act="sound-toggle">効果音・エンジン音: ${settings.sound ? 'ON' : 'OFF'}</button></div>
+        <div class="menu">${switchRow('sound-toggle', '効果音・エンジン音', settings.sound)}</div>
       </div>
       <div class="card">
         <p>運転の補助</p>
-        <div class="menu"><button class="btn ${settings.autoDrive ? 'active' : ''}" data-act="auto-toggle">ハンドルだけ操作: ${settings.autoDrive ? 'ON' : 'OFF'}</button></div>
+        <div class="menu">${switchRow('auto-toggle', 'ハンドルだけ操作', settings.autoDrive)}</div>
         <p class="note">ONにすると、アクセルとブレーキはコースに合わせて自動になります。ハンドルだけ操作します。</p>
       </div>
       <div class="card">
         <p>ハンドル</p>
-        <div class="menu"><button class="btn ${settings.gyro ? 'active' : ''}" data-act="gyro-toggle">スマホを傾けて操作: ${settings.gyro ? 'ON' : 'OFF'}</button></div>
+        <div class="menu">${switchRow('gyro-toggle', 'スマホを傾けて操作', settings.gyro)}</div>
         <p class="note">ONにすると、スマホを左右に傾けてハンドルを切ります。構えはレース開始時の向きが「まっすぐ」になります。</p>
       </div>
       <div class="card">
@@ -418,6 +418,11 @@ export class UI {
     this.stopViewer?.stop();
     this.stopViewer = null;
   }
+}
+
+// オン・オフのスイッチ (ラベルの右にスイッチを置く)
+function switchRow(act: string, label: string, on: boolean): string {
+  return `<button class="switch-row" data-act="${act}" role="switch" aria-checked="${on}"><span>${label}</span><span class="switch${on ? ' on' : ''}"></span></button>`;
 }
 
 // 視点の設定のスライダーの表示
