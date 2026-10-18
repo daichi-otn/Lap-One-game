@@ -6,6 +6,7 @@ import type { WeatherEffect } from '../game/weather';
 import type { Quality } from '../game/save';
 import { instantiateCar, loadCarTemplate, WHEEL_SPIN_RADIUS, type CarParts } from './carModel';
 import type { Impact } from '../game/car';
+import type { NavScreen } from './cockpit';
 
 const QUALITY: Record<Quality, { pixelRatio: number; shadows: boolean; drops: number }> = {
   low: { pixelRatio: 1, shadows: false, drops: 300 },
@@ -123,6 +124,8 @@ export class World {
   private rain: THREE.LineSegments | null = null;
   private rainOffsets = new Float32Array(0);
   private cars = new Map<CarState, THREE.Group>();
+  private trackPts: THREE.Vector3[] = [];
+  private trackWidth = 20;
   private exploded = new Set<CarState>();
   private normalsDirty = new Set<THREE.Mesh>();
   private normalsTimer = 0;
@@ -162,6 +165,8 @@ export class World {
   }
 
   setTrack(track: Track): void {
+    this.trackPts = track.pts;
+    this.trackWidth = track.course.width;
     if (this.road) this.scene.remove(this.road);
     this.road = buildRoad(track);
     this.scene.add(this.road);
@@ -334,6 +339,58 @@ export class World {
     });
   }
 
+  // 運転席の画面にナビ (地図) を描く。コースを、自分の車の向きに合わせて上向きに回す
+  private drawNav(nav: NavScreen, car: CarState): void {
+    const ctx = nav.canvas.getContext('2d');
+    if (!ctx) return;
+    const W = nav.canvas.width;
+    const H = nav.canvas.height;
+    const S = 0.32; // 1 m あたりの画素数
+    const fx = Math.sin(car.heading);
+    const fz = Math.cos(car.heading);
+    const rx = Math.cos(car.heading);
+    const rz = -Math.sin(car.heading);
+    const toScreen = (x: number, z: number): [number, number] => {
+      const dx = x - car.x;
+      const dz = z - car.z;
+      return [W / 2 + (dx * rx + dz * rz) * S, H / 2 - (dx * fx + dz * fz) * S];
+    };
+    ctx.fillStyle = '#0b1620';
+    ctx.fillRect(0, 0, W, H);
+    // 道路 (幅のある線) と中央の破線
+    ctx.beginPath();
+    this.trackPts.forEach((p, i) => {
+      const [x, y] = toScreen(p.x, p.z);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#3a4650';
+    ctx.lineWidth = this.trackWidth * S;
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // 自分の車 (画面の中央で、上が進行方向)
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath();
+    ctx.moveTo(0, -9);
+    ctx.lineTo(6, 6);
+    ctx.lineTo(-6, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#9fb0bf';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText('NAV', 8, 18);
+    nav.texture.needsUpdate = true;
+  }
+
   // 画角を変えたら、投影行列を作り直す
   private setFov(fov: number): void {
     if (this.camera.fov === fov) return;
@@ -361,6 +418,9 @@ export class World {
         parts.body.visible = !(car.isPlayer && firstPerson);
         parts.cockpit!.visible = car.isPlayer && firstPerson;
       }
+      // 一人称のときは、運転席の画面に地図を描く
+      const nav = parts.cockpit?.userData.nav as NavScreen | undefined;
+      if (car.isPlayer && firstPerson && nav) this.drawNav(nav, car);
       // タイヤは速さに合わせて回す
       for (const sp of parts.spinners ?? []) sp.rotation.z += (car.speed / WHEEL_SPIN_RADIUS) * dt;
       // ニトロ中はマフラーから炎を出す (少しずつ揺らす)

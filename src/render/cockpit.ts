@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 
 // 角を丸めた箱 (内装の部品用)。縁を面取りして、箱の角が目立たないようにする
+export interface NavScreen {
+  canvas: HTMLCanvasElement;
+  texture: THREE.CanvasTexture;
+}
+
 export function softBox(w: number, h: number, d: number, r = 0.06): THREE.BufferGeometry {
   const bevel = Math.min(r, w / 4, h / 4, d / 4);
   const iw = w - bevel * 2;
@@ -45,7 +50,20 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   const seatAccent = new THREE.MeshStandardMaterial({ color: seatTier === 1 ? seatColor : 0xc62828, roughness: 0.6 });
   const dashMat = new THREE.MeshStandardMaterial({ color: 0x17191c, roughness: 0.7 });
   const alu = new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.85, roughness: 0.3 });
-  const screen = new THREE.MeshStandardMaterial({ color: 0x0b0d10, emissive: 0x0c2234, emissiveIntensity: 0.6, roughness: 0.2, metalness: 0.2 });
+  // 中央の画面にはナビ (地図) を映す。描く内容は scene.ts が毎フレーム更新する
+  const navCanvas = document.createElement('canvas');
+  navCanvas.width = 256;
+  navCanvas.height = 160;
+  const navTex = new THREE.CanvasTexture(navCanvas);
+  const screen = new THREE.MeshStandardMaterial({
+    color: 0x0b0d10,
+    map: navTex,
+    emissive: 0xffffff,
+    emissiveMap: navTex,
+    emissiveIntensity: 0.9,
+    roughness: 0.2,
+    metalness: 0.2,
+  });
   const addTo = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, rx = 0) => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(x, y, z);
@@ -60,7 +78,12 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   // ダッシュ上部のアルミのライン
   addTo(softBox(1.5, 0.015, 0.02), alu, 0, 0.99, 0.99);
   // 中央の大型タッチパネル (手前に傾けてある)
-  addTo(softBox(0.46, 0.3, 0.02), screen, 0, 1.13, 0.86, -0.35);
+  addTo(softBox(0.46, 0.3, 0.02), dashMat, 0, 1.13, 0.86, -0.35);
+  // 地図を映す板。箱の運転席側の面に重ねる (箱の形の UV では地図が正しく映らないため、平面を使う)
+  const screenPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.26), screen);
+  screenPlane.position.set(0, 1.13, 0.86 - 0.0125);
+  screenPlane.rotation.set(-0.35, Math.PI, 0);
+  cockpit.add(screenPlane);
   // エアベント (左右に横スリット)
   for (const x of [-0.55, 0.55]) {
     for (const dy of [0, 0.05]) addTo(softBox(0.34, 0.012, 0.03), alu, x, 0.92 + dy, 0.93);
@@ -112,5 +135,6 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
     addTo(softBox(0.5, 0.75, 0.12), leather, x, 0.9, -0.45, -0.08);
     addTo(softBox(0.32, 0.18, 0.12), leather, x, 1.3, -0.5);
   }
+  cockpit.userData.nav = { canvas: navCanvas, texture: navTex } satisfies NavScreen;
   return cockpit;
 }
