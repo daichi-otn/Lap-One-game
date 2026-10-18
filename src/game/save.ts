@@ -42,10 +42,19 @@ export function storeAdmin(admin: AdminSettings): void {
     // 保存失敗は無視
   }
 }
+// 一人称の目の位置: 高さ (m)、見上げ・見下げ (度、正が上)、前後の位置 (m、正が前)
+export interface FirstPersonView {
+  height: number;
+  pitch: number;
+  depth: number;
+}
+export const DEFAULT_VIEW: FirstPersonView = { height: 1.2, pitch: 0, depth: -0.2 };
+
 export interface Settings {
   quality: Quality;
   sound: boolean;
   gyro: boolean; // スマホを傾けてハンドル操作
+  view: FirstPersonView;
 }
 
 const SAVE_KEY = 'lapone.save.v1';
@@ -83,13 +92,17 @@ export function storeSave(save: SaveData): void {
 }
 
 export function loadSettings(): Settings {
+  const base: Settings = { quality: 'medium', sound: true, gyro: false, view: { ...DEFAULT_VIEW } };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { quality: 'medium', sound: true, gyro: false, ...(JSON.parse(raw) as Partial<Settings>) };
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<Settings>;
+      return { ...base, ...saved, view: { ...DEFAULT_VIEW, ...saved.view } };
+    }
   } catch {
     // 既定値を使う
   }
-  return { quality: 'medium', sound: true, gyro: false };
+  return base;
 }
 
 export function storeSettings(settings: Settings): void {

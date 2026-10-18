@@ -17,6 +17,8 @@ import {
   loadSettings,
   storeSettings,
   type AdminSettings,
+  type FirstPersonView,
+  DEFAULT_VIEW,
   type Quality,
   type SaveData,
   type Settings,
@@ -55,7 +57,10 @@ let lastPitStops = 0;
 let stallShown = false; // エンストの通知を一度だけ出すため
 let dnfAt = 0; // 失格になった時刻 (爆発を見せるため、結果を少し遅らせる)
 let firstPerson = false;
-let mode: 'screen' | 'race' | 'result' = 'screen';
+let mode: 'screen' | 'race' | 'result' | 'preview' = 'screen';
+let previewRace: Race | null = null; // 設定の後ろで見せる一人称の画面 (走らせない)
+// 設定に関係する操作は、プレビューを続ける
+const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'view-reset']);
 
 const input = new Input(() => (firstPerson = !firstPerson));
 // 前回ジャイロを使っていたら、開始を試す (iOS は許可が要るので失敗しても止めない)
@@ -70,9 +75,12 @@ if (settings.gyro) {
 const ui = new UI(document.getElementById('ui')!, {
   act,
   hold: (action: Action, down: boolean) => input.press(action, down),
+  view: (key, value) => viewChange(key as keyof FirstPersonView, value),
 });
+world.setFirstPersonView(settings.view);
 
 function act(name: string, arg?: string): void {
+  if (mode === 'preview' && !PREVIEW_ACTS.has(name)) stopPreview();
   // 管理者の操作は開発サーバーでだけ受け付ける (公開版ではこの行の先は使われない)
   if (ADMIN_ENABLED && name.startsWith('admin-')) {
     adminAct(name, arg);
@@ -97,6 +105,12 @@ function act(name: string, arg?: string): void {
       break;
     case 'gyro-toggle':
       void toggleGyro();
+      break;
+    case 'view-reset':
+      settings = { ...settings, view: { ...DEFAULT_VIEW } };
+      storeSettings(settings);
+      world.setFirstPersonView(settings.view);
+      showSettings();
       break;
     case 'sound-toggle':
       settings = { ...settings, sound: !settings.sound };
@@ -209,7 +223,38 @@ function showGarage(engineSwap = false): void {
 }
 
 function showSettings(): void {
+  if (mode !== 'preview') startPreview();
+  mode = 'preview';
   ui.showSettings(settings, admin);
+}
+
+// 設定の後ろで、一人称の画面を見せる (レースは走らせず、カメラだけ動かす)
+function startPreview(): void {
+  const track = buildTrack(COURSES[0]);
+  previewRace = new Race({
+    track,
+    weather: 'sunny',
+    playerMods: computeMods(save.equipped),
+    playerLook: lookFromEquipped(save.equipped),
+    aiMods: [],
+  });
+  world.setTrack(track);
+  world.setWeather(WEATHER.sunny, 1);
+  world.setCars(previewRace.cars);
+  ui.setPreview(true);
+}
+
+function stopPreview(): void {
+  previewRace = null;
+  mode = 'screen';
+  ui.setPreview(false);
+}
+
+// 視点の設定を変えたら、保存してすぐ反映する
+function viewChange(key: keyof FirstPersonView, value: number): void {
+  settings = { ...settings, view: { ...settings.view, [key]: value } };
+  storeSettings(settings);
+  world.setFirstPersonView(settings.view);
 }
 
 function startRace(c: Course): void {
@@ -351,6 +396,10 @@ createFixedStepLoop(
     const now = performance.now();
     const vdt = Math.min(0.05, (now - lastVisual) / 1000);
     lastVisual = now;
+    if (mode === 'preview' && previewRace) {
+      world.frame(vdt, previewRace.player, true);
+      world.render();
+    }
     if (race && (mode === 'race' || mode === 'result')) {
       world.frame(vdt, race.player, firstPerson);
       if (mode === 'race') ui.updateHud(race, firstPerson);

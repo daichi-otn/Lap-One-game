@@ -3,7 +3,7 @@ import type { Track } from '../game/track';
 import { SAMPLES, pitLaneOffset, tangentAt } from '../game/track';
 import type { CarState } from '../game/car';
 import type { WeatherEffect } from '../game/weather';
-import type { Quality } from '../game/save';
+import { DEFAULT_VIEW, type FirstPersonView, type Quality } from '../game/save';
 import { instantiateCar, loadCarTemplate, WHEEL_SPIN_RADIUS, type CarParts } from './carModel';
 import type { Impact } from '../game/car';
 import type { NavScreen } from './cockpit';
@@ -135,6 +135,7 @@ export class World {
   private camPos = new THREE.Vector3();
   private snap = true;
   private lastFirstPerson = false;
+  private view: FirstPersonView = { ...DEFAULT_VIEW };
 
   constructor(container: HTMLElement) {
     container.appendChild(this.renderer.domElement);
@@ -392,6 +393,10 @@ export class World {
     nav.texture.needsUpdate = true;
   }
 
+  setFirstPersonView(v: FirstPersonView): void {
+    this.view = { ...v };
+  }
+
   // 画角を変えたら、投影行列を作り直す
   private setFov(fov: number): void {
     if (this.camera.fov === fov) return;
@@ -447,8 +452,9 @@ export class World {
       const rz = -Math.sin(player.heading);
       // 目の位置は座席の後ろ寄り。ダッシュボードとハンドルが視界の下に入るように、画角を少し広げる
       this.setFov(72);
-      this.camera.position.set(player.x - fx * 0.2 - rx * 0.4, 1.2, player.z - fz * 0.2 - rz * 0.4);
-      this.camera.lookAt(player.x + fx * 30, 1.2, player.z + fz * 30);
+      const v = this.view;
+      this.camera.position.set(player.x + fx * v.depth - rx * 0.4, v.height, player.z + fz * v.depth - rz * 0.4);
+      this.camera.lookAt(player.x + fx * 30, v.height + 30 * Math.tan((v.pitch * Math.PI) / 180), player.z + fz * 30);
       this.camPos.copy(this.camera.position);
     } else {
       this.setFov(60);

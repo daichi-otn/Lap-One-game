@@ -1,7 +1,7 @@
 import { COURSES, type Course } from '../game/courses';
 import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
-import { ADMIN_ENABLED, type AdminSettings, type Quality, type SaveData, type Settings } from '../game/save';
+import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings } from '../game/save';
 import { REDLINE_RPM, REDLINE_STALL_SECONDS } from '../game/car';
 import type { Race } from '../game/race';
 import { startMenuBackground } from '../render/menuBackground';
@@ -55,6 +55,7 @@ export function showSplash(host: HTMLElement, onDone: () => void): void {
 export interface UIHandlers {
   act(name: string, arg?: string): void;
   hold(action: Action, down: boolean): void;
+  view(key: string, value: number): void;
 }
 
 export class UI {
@@ -67,11 +68,13 @@ export class UI {
   private holds = new Map<number, Action>();
   private stopBackground: (() => void) | null = null;
   private stopViewer: CarViewer | null = null;
+  private root: HTMLElement;
 
   constructor(
     root: HTMLElement,
     private h: UIHandlers,
   ) {
+    this.root = root;
     root.innerHTML = `
       <div class="screen" hidden></div>
       <div class="hud" hidden>
@@ -117,6 +120,15 @@ export class UI {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
       if (!el || el.hasAttribute('disabled')) return;
       this.h.act(el.dataset.act!, el.dataset.arg);
+    });
+    // 視点の設定のスライダーを動かしたら、すぐ反映する
+    root.addEventListener('input', (e) => {
+      const el = e.target as HTMLInputElement;
+      if (!el.dataset.view) return;
+      const value = Number(el.value);
+      this.h.view(el.dataset.view, value);
+      const out = root.querySelector(`[data-val="${el.dataset.view}"]`);
+      if (out) out.textContent = viewLabel(el.dataset.view, value);
     });
     root.addEventListener('pointerdown', (e) => {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-hold]');
@@ -241,6 +253,14 @@ export class UI {
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button></div>
       <h2>グラフィック</h2>
       <div class="card">
+        <p>一人称の視点</p>
+        <p class="note">設定の後ろで、一人称の見え方がすぐ変わります。</p>
+        ${viewSlider(settings.view, 'height', '目の高さ', 0.9, 1.8, 0.05)}
+        ${viewSlider(settings.view, 'pitch', '見上げ・見下げ', -10, 20, 1)}
+        ${viewSlider(settings.view, 'depth', '前後の位置', -0.6, 0.6, 0.05)}
+        <div class="menu"><button class="btn" data-act="view-reset">初期値に戻す</button></div>
+      </div>
+      <div class="card">
         <p>描画品質</p>
         <div class="menu">${opt('low', '低')}${opt('medium', '中')}${opt('high', '高')}</div>
         <p class="note">低: 影なし・軽量 ／ 高: 影・高解像度・雨粒多め（次のレースから反映）</p>
@@ -357,6 +377,11 @@ export class UI {
   }
 
   // solid: 不透明で表示する (ピットの通知など)
+  // 設定の後ろに一人称の画面を見せるとき、画面を半透明にする
+  setPreview(on: boolean): void {
+    this.root.classList.toggle('preview', on);
+  }
+
   toast(message: string, solid = false): void {
     this.toastEl.classList.toggle('solid', solid);
     this.toastEl.textContent = message;
@@ -381,6 +406,16 @@ export class UI {
     this.stopViewer?.stop();
     this.stopViewer = null;
   }
+}
+
+// 視点の設定のスライダーの表示
+function viewLabel(key: string, value: number): string {
+  if (key === 'pitch') return `${value > 0 ? '+' : ''}${value}°`;
+  return `${value.toFixed(2)} m`;
+}
+
+function viewSlider(view: FirstPersonView, key: keyof FirstPersonView, label: string, min: number, max: number, step: number): string {
+  return `<label class="slider"><span>${label}: <b data-val="${key}">${viewLabel(key, view[key])}</b></span><input type="range" data-view="${key}" min="${min}" max="${max}" step="${step}" value="${view[key]}"></label>`;
 }
 
 // メーターの絵。270 度の目盛りの上に、redFrom から最大までを赤い帯で示す (針と色を同じ値で合わせる)
