@@ -54,8 +54,6 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   const trimMat = new THREE.MeshStandardMaterial({ color: 0x0f1113, roughness: 0.6 }); // 黒い内張り
   const alu = new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.85, roughness: 0.3 });
   const stitch = new THREE.MeshStandardMaterial({ color: 0x6b5a2e, roughness: 0.9 });
-  const dial = new THREE.MeshStandardMaterial({ color: 0x0a0c0e, emissive: 0x1d3d55, emissiveIntensity: 0.7, roughness: 0.3 });
-  const ring = new THREE.MeshStandardMaterial({ color: 0xdfe6ec, emissive: 0x6fb7e6, emissiveIntensity: 0.8 });
 
   // 中央の画面にはナビ (地図) を映す。描く内容は scene.ts が毎フレーム更新する
   const navCanvas = document.createElement('canvas');
@@ -89,16 +87,24 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   addTo(softBox(0.7, 0.012, 0.02), alu, 0.55, 0.955, 0.9);
   // 計器の覆い (ハンドルの上に出る黒いフード) と、その中の 2 つの丸い計器
   addTo(softBox(0.7, 0.1, 0.3), trimMat, -0.4, 1.1, 0.7, -0.2);
-  for (const x of [-0.56, -0.24]) {
-    const face = new THREE.Mesh(new THREE.CircleGeometry(0.095, 40), dial);
-    face.position.set(x, 1.04, 0.52);
-    face.rotation.x = -0.5;
-    cockpit.add(face);
-    const edge = new THREE.Mesh(new THREE.RingGeometry(0.09, 0.104, 40), ring);
-    edge.position.set(x, 1.04, 0.522);
-    edge.rotation.x = -0.5;
-    cockpit.add(edge);
-  }
+  // 計器: デジタル表示 (速さ・ギア・回転数)。描く内容は scene.ts が毎フレーム更新する
+  const clusterCanvas = document.createElement('canvas');
+  clusterCanvas.width = 256;
+  clusterCanvas.height = 112;
+  const clusterTex = new THREE.CanvasTexture(clusterCanvas);
+  const clusterMat = new THREE.MeshStandardMaterial({
+    color: 0x000000,
+    map: clusterTex,
+    emissive: 0xffffff,
+    emissiveMap: clusterTex,
+    emissiveIntensity: 0.9,
+    roughness: 0.3,
+  });
+  // ハンドルの向こうに見えるように、ハンドルより手前の位置に置く
+  const clusterPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.175), clusterMat);
+  clusterPlane.position.set(-0.4, 0.98, 0.36);
+  clusterPlane.rotation.set(-0.6, Math.PI, 0);
+  cockpit.add(clusterPlane);
 
   // センター: 中央の大型画面 (手前に傾ける) と、その下のエアコン操作
   addTo(softBox(0.5, 0.34, 0.04), trimMat, 0, 1.09, 0.86, -0.35);
@@ -188,5 +194,6 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
 
   cockpit.userData.nav = { canvas: navCanvas, texture: navTex } satisfies NavScreen;
   cockpit.userData.wheel = steering;
+  cockpit.userData.cluster = { canvas: clusterCanvas, texture: clusterTex } satisfies NavScreen;
   return cockpit;
 }

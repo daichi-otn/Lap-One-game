@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Track } from '../game/track';
 import { SAMPLES, pitLaneOffset, tangentAt } from '../game/track';
-import type { CarState } from '../game/car';
+import { REDLINE_RPM, type CarState } from '../game/car';
 import type { WeatherEffect } from '../game/weather';
 import { DEFAULT_VIEW, type FirstPersonView, type Quality } from '../game/save';
 import { instantiateCar, loadCarTemplate, WHEEL_SPIN_RADIUS, type CarParts } from './carModel';
@@ -397,6 +397,37 @@ export class World {
     this.view = { ...v };
   }
 
+  // 運転席の計器に、速さ・ギア・回転数を描く
+  private drawCluster(c: NavScreen, car: CarState): void {
+    const ctx = c.canvas.getContext('2d');
+    if (!ctx) return;
+    const W = c.canvas.width;
+    const H = c.canvas.height;
+    ctx.fillStyle = '#05080b';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#e8f1f8';
+    ctx.font = 'bold 48px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(String(Math.round(car.speed * 3.6)), 14, 58);
+    ctx.fillStyle = '#9fb0bf';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('km/h', 16, 80);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffd23f';
+    ctx.font = 'bold 44px sans-serif';
+    ctx.fillText(String(car.gear + 1), W - 14, 58);
+    ctx.fillStyle = '#9fb0bf';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('GEAR', W - 14, 80);
+    // 回転数の棒 (8000 rpm まで。レッドゾーンから赤)
+    const ratio = Math.min(1, car.rpm / 8000);
+    ctx.fillStyle = '#1d2a35';
+    ctx.fillRect(14, H - 22, W - 28, 10);
+    ctx.fillStyle = car.rpm >= REDLINE_RPM ? '#ff5252' : '#4fd1c5';
+    ctx.fillRect(14, H - 22, (W - 28) * ratio, 10);
+    c.texture.needsUpdate = true;
+  }
+
   // 画角を変えたら、投影行列を作り直す
   private setFov(fov: number): void {
     if (this.camera.fov === fov) return;
@@ -430,6 +461,8 @@ export class World {
       if (wheel) wheel.rotation.z = -car.wheelTurn * 4;
       const nav = parts.cockpit?.userData.nav as NavScreen | undefined;
       if (car.isPlayer && firstPerson && nav) this.drawNav(nav, car);
+      const cluster = parts.cockpit?.userData.cluster as NavScreen | undefined;
+      if (car.isPlayer && firstPerson && cluster) this.drawCluster(cluster, car);
       // タイヤは速さに合わせて回す
       for (const sp of parts.spinners ?? []) sp.rotation.z += (car.speed / WHEEL_SPIN_RADIUS) * dt;
       // ニトロ中はマフラーから炎を出す (少しずつ揺らす)
