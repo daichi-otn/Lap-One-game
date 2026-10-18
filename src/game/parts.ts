@@ -64,8 +64,8 @@ interface Tier {
 
 // 段階 1〜10 の性能の増え方。1 が標準 (補正なし)、10 が最上位
 const LADDER = (max: number, i: number): number => 1 + (max - 1) * (i / 9);
-// 価格: 1 は無料。段階が上がるほど高くなる
-const priceAt = (i: number): number => (i === 0 ? 0 : Math.round((90 * i ** 1.6) / 10) * 10);
+// 価格: 1 は無料。段階が上がるほど高くなる (上位は数万コイン。勝ち続けても、すぐには買い尽くせない)
+const priceAt = (i: number): number => (i === 0 ? 0 : Math.round((900 * i ** 1.6) / 100) * 100);
 
 const SPECS: Record<Slot, { names: string[]; mods: (i: number) => Partial<Mods> }> = {
   engine: {
