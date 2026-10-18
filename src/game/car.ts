@@ -133,16 +133,17 @@ export function stepCar(car: CarState, input: CarInput, dt: number, env: Env, tr
   }
   const gas = input.gas && !car.stalled && car.shiftTimer <= 0;
 
-  const boosting = !!input.nitro && gas && car.nitro > 0;
+  // ニトロはボタンだけで加速する (アクセルを踏んでいなくても効く)
+  const boosting = !!input.nitro && !car.stalled && car.shiftTimer <= 0 && car.nitro > 0;
   car.boosting = boosting;
   if (boosting) car.nitro = Math.max(0, car.nitro - NITRO.usePerSec * dt);
   else car.nitro = Math.min(NITRO.maxGauge, car.nitro + car.speed * NITRO.chargePerMeter * dt);
 
   const top = BASE.topSpeed * car.mods.topSpeed * (boosting ? NITRO.topSpeedMult : 1) * (offroad ? 0.6 : 1);
   const accel = BASE.accel * car.mods.accel * (boosting ? NITRO.accelMult : 1);
-  if (gas) car.speed += accel * Math.max(0.05, 1 - car.speed / top) * dt;
+  if (gas || boosting) car.speed += accel * Math.max(0.05, 1 - car.speed / top) * dt;
   if (input.brake) car.speed -= BASE.brake * car.mods.brake * env.brake * dt;
-  const engineBrake = gas ? 0 : (ENGINE_BRAKE * (car.rpm - IDLE_RPM)) / RPM_SPAN;
+  const engineBrake = gas || boosting ? 0 : (ENGINE_BRAKE * (car.rpm - IDLE_RPM)) / RPM_SPAN;
   car.speed -= (0.6 + 0.01 * car.speed + (car.stalled ? 2 : 0) + engineBrake) * dt;
   car.speed = Math.min(Math.max(car.speed, 0), top * 1.03);
 
