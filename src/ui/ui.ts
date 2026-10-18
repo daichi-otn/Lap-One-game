@@ -4,15 +4,9 @@ import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings } from '../game/save';
 import { REDLINE_RPM, REDLINE_STALL_SECONDS } from '../game/car';
 import type { Race } from '../game/race';
-import { startMenuBackground } from '../render/menuBackground';
 import { startCarViewer, type CarViewer } from '../render/carViewer';
 import { LOGO_SVG } from './logo';
 import type { Action } from '../input/input';
-
-// メニューの背景の置き場所 (中身は startMenuBackground が 3D で描く)
-function raceBackground(): string {
-  return '<div class="bg-race" aria-hidden="true"></div>';
-}
 
 export interface RaceResult {
   courseName: string;
@@ -66,7 +60,6 @@ export class UI {
   private fadeEl: HTMLElement;
   private fadeTimer = 0;
   private holds = new Map<number, Action>();
-  private stopBackground: (() => void) | null = null;
   private stopViewer: CarViewer | null = null;
   private root: HTMLElement;
 
@@ -151,7 +144,6 @@ export class UI {
   showMenu(save: SaveData): void {
     this.hideHud();
     this.setScreen(`
-      ${raceBackground()}
       <div class="hero">
         <div class="speed-lines"></div>
         <div class="kicker">RACING GAME</div>
@@ -165,6 +157,7 @@ export class UI {
         <button class="btn big" data-act="settings">設定</button>
       </div>
       <p class="note">${save.racesRun === 0 ? '初回レースは運営会社が車を支給します（参加費なし）' : `参加費 ${entryFee(save.racesRun).toLocaleString()} coin ／ 出走回数 ${save.racesRun}`}</p>`);
+    this.screen.classList.add('title-photo');
   }
 
   showCourses(save: SaveData): void {
@@ -393,17 +386,14 @@ export class UI {
 
   private setScreen(html: string): void {
     this.stopAnimations();
+    this.screen.classList.remove('title-photo');
     this.screen.innerHTML = html;
     this.screen.hidden = false;
     this.screen.scrollTop = 0;
-    const host = this.screen.querySelector<HTMLElement>('.bg-race');
-    if (host) this.stopBackground = startMenuBackground(host);
   }
 
   // 画面が変わるとき、背景の描画やガレージの車の描画を止める
   private stopAnimations(): void {
-    this.stopBackground?.();
-    this.stopBackground = null;
     this.stopViewer?.stop();
     this.stopViewer = null;
   }
