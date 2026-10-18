@@ -658,6 +658,9 @@ function buildRoad(track: Track): THREE.Group {
   group.add(stripMesh(track, half, half + 1.5, 0.03, kerb));
   group.add(stripMesh(track, -half - 1.5, -half, 0.03, kerb));
 
+  // コースの両側のガードレールと、外側の観客席
+  group.add(buildBarriers(track));
+
   // ピット: 道の右側から分かれる、ピットへの道と、横に建つ建物
   group.add(buildPitRoad(track));
   group.add(buildPitBuilding(track));
@@ -671,6 +674,67 @@ function buildRoad(track: Track): THREE.Group {
   line.position.copy(track.pts[0]).setY(0.05);
   line.rotation.y = Math.atan2(t.x, t.z);
   group.add(line);
+  return group;
+}
+
+// ガードレールと観客席。どちらも中心線に沿った帯 (ribbon) を積み上げて作る
+const RAIL_GAP = 2.5; // 道の端からガードレールまで
+const STAND_GAP = 7; // 道の端から観客席の最前列まで
+const STAND_TIERS = 8;
+
+// 中心線に沿って、2 本の線 a と b (それぞれ [横のずれ, 高さ]) の間を帯にする
+function ribbon(track: Track, s0: number, s1: number, a: [number, number], b: [number, number], mat: THREE.Material): THREE.Mesh {
+  const n = s1 - s0 + 1;
+  const pos = new Float32Array(n * 6);
+  const idx: number[] = [];
+  for (let k = 0; k < n; k++) {
+    const j = (s0 + k) % SAMPLES;
+    const p = track.pts[j];
+    const t = tangentAt(track.pts, j);
+    const nx = -t.z;
+    const nz = t.x;
+    pos.set([p.x + nx * a[0], a[1], p.z + nz * a[0], p.x + nx * b[0], b[1], p.z + nz * b[0]], k * 6);
+    if (k < n - 1) {
+      const v = k * 2;
+      idx.push(v, v + 2, v + 1, v + 1, v + 2, v + 3);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, mat);
+}
+
+function buildBarriers(track: Track): THREE.Group {
+  const group = new THREE.Group();
+  const half = track.course.width / 2;
+  // ピットの区間は、ガードレールと観客席を切って通り道を空ける
+  const pitStart = track.pitFrom - 20;
+  const pitEnd = track.pitTo + 20;
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xc9d1d9, metalness: 0.5, roughness: 0.4, side: THREE.DoubleSide });
+  // ガードレール: 両側に、高さ 0.35〜0.9 m の帯
+  for (const side of [1, -1]) {
+    const off = side * (half + RAIL_GAP);
+    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off, 0.35], [off, 0.9], railMat));
+  }
+  // 観客席: 片側の外側に、8 段の階段。数区間ごとに建てる
+  const seatColors = [0x34495e, 0x7b3f3f, 0x3e6b4f, 0x6b5a2e];
+  const seatMats = seatColors.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, side: THREE.DoubleSide }));
+  const standMat = new THREE.MeshStandardMaterial({ color: 0x8b93a0, roughness: 0.8, side: THREE.DoubleSide });
+  const span = SAMPLES / 8;
+  for (let w = 0; w < 8; w++) {
+    if (w % 3 === 2) continue;
+    const s0 = Math.round(w * span);
+    const s1 = Math.round((w + 1) * span) - 1;
+    if (s1 >= pitStart && s0 <= pitEnd) continue;
+    for (let k = 0; k < STAND_TIERS; k++) {
+      const front = half + STAND_GAP + k * 0.9;
+      const top = (k + 1) * 0.5;
+      group.add(ribbon(track, s0, s1, [front, 0], [front, top], standMat)); // 前面
+      group.add(ribbon(track, s0, s1, [front, top], [front + 0.9, top], seatMats[(k + w) % seatMats.length])); // 座席の段
+    }
+  }
   return group;
 }
 
