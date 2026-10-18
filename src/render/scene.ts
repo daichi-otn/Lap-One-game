@@ -134,6 +134,7 @@ export class World {
   private quality: Quality = 'medium';
   private camPos = new THREE.Vector3();
   private snap = true;
+  private lastFirstPerson = false;
 
   constructor(container: HTMLElement) {
     container.appendChild(this.renderer.domElement);
@@ -432,6 +433,11 @@ export class World {
 
     const fx = Math.sin(player.heading);
     const fz = Math.cos(player.heading);
+    // 視点を切り替えた瞬間は、カメラをゆっくり動かさず、すぐ新しい位置に置く
+    if (firstPerson !== this.lastFirstPerson) {
+      this.lastFirstPerson = firstPerson;
+      this.snap = true;
+    }
     this.marker.visible = !firstPerson;
     this.marker.position.x = player.x;
     this.marker.position.z = player.z;
