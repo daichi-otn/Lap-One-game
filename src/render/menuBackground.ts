@@ -1,6 +1,4 @@
 import * as THREE from 'three';
-import { instantiateCar, loadCarTemplate } from './carModel';
-import { NEUTRAL_MODS } from '../game/parts';
 
 // 夕焼けの空: 上は濃い紫、下は橙色
 function sunsetSky(): THREE.CanvasTexture {
@@ -20,7 +18,7 @@ function sunsetSky(): THREE.CanvasTexture {
   return new THREE.CanvasTexture(canvas);
 }
 
-// メニューの背景: 3D のスポーツカーが夕方のサーキットを走り抜ける。host の中に描画し、返り値で止める
+// メニューの背景: 夕方のサーキットの風景 (車は走らせない)。host の中に描画し、返り値で止める
 export function startMenuBackground(host: HTMLElement): () => void {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -83,25 +81,6 @@ export function startMenuBackground(host: HTMLElement): () => void {
     dashes.push(d);
   }
 
-  // 車: 手前の車ほど速く、大きく見える
-  const lanes = [
-    { z: -7, speed: 13, color: 0x4f5b66 },
-    { z: -10, speed: 19, color: 0xffb300 },
-    { z: -13, speed: 11, color: 0x67e8f9 },
-    { z: -16, speed: 17, color: 0xff5252 },
-    { z: -19, speed: 9, color: 0xb388ff },
-  ];
-  const cars = lanes.map((lane, i) => {
-    const car = new THREE.Group();
-    car.rotation.y = Math.PI / 2; // 進行方向 (+X) を向ける
-    void loadCarTemplate().then((template) => {
-      car.add(instantiateCar(template));
-    });
-    car.position.set(-40 + i * 14, 0, lane.z);
-    scene.add(car);
-    return { car, speed: lane.speed };
-  });
-
   const resize = () => {
     const w = Math.max(1, host.clientWidth);
     const h = Math.max(1, host.clientHeight);
@@ -118,10 +97,6 @@ export function startMenuBackground(host: HTMLElement): () => void {
   const frame = (now: number) => {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    for (const c of cars) {
-      c.car.position.x += c.speed * dt;
-      if (c.car.position.x > 45) c.car.position.x -= 90;
-    }
     for (const d of dashes) {
       d.position.x += 22 * dt;
       if (d.position.x > 50) d.position.x -= 200;
