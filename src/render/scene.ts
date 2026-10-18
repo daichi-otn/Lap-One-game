@@ -436,7 +436,8 @@ export class World {
   }
 
   // 毎フレーム: 車の位置・カメラ・雨を更新
-  frame(dt: number, player: CarState, firstPerson: boolean): void {
+  // orbit: ゴール後のリプレイ中は、経過秒数を渡す (ドローン風に車の周りを回る)
+  frame(dt: number, player: CarState, firstPerson: boolean, orbit?: number): void {
     for (const [car, group] of this.cars) {
       // 耐久が 0 になった車は爆発して消える (自分も CPU も同じ)
       // エンストで失格した車は爆発せず、そのまま止まる
@@ -501,6 +502,15 @@ export class World {
       this.camera.lookAt(player.x + fx * 6, 1.2, player.z + fz * 6);
     }
     this.snap = false;
+    if (orbit !== undefined) {
+      // ドローン風の撮影: 車の周りを回りながら、少しずつ高く引いていく
+      const a = player.heading + Math.PI * 0.6 + orbit * 0.5;
+      const r = 10 + orbit * 0.8;
+      const h = 3.5 + orbit * 1.4;
+      this.camera.position.set(player.x + Math.sin(a) * r, h, player.z + Math.cos(a) * r);
+      this.camera.lookAt(player.x, 1.0, player.z);
+      this.camPos.copy(this.camera.position);
+    }
 
     this.sun.position.set(player.x + 40, 80, player.z + 30);
     this.sun.target.position.set(player.x, 0, player.z);

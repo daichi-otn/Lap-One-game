@@ -56,6 +56,42 @@ let feePaid = 0;
 let lastPitStops = 0;
 let stallShown = false; // エンストの通知を一度だけ出すため
 let dnfAt = 0; // 失格になった時刻 (爆発を見せるため、結果を少し遅らせる)
+let replayAt = 0; // ゴールした時刻 (リプレイを流してから結果を出す)
+// リプレイ: 走行中の車の位置を一定間隔で記録し、ゴール後に速めの速さで流す
+const REC_STEP = 0.1; // 記録の間隔 (秒)
+const REPLAY_RATE = 2; // リプレイの速さ (実時間の何倍)
+let recording: Float32Array[] = []; // 各時刻の [x, z, heading] (車の順)
+let recTimer = 0;
+
+function record(r: Race): void {
+  const f = new Float32Array(r.cars.length * 3);
+  r.cars.forEach((c, i) => {
+    f[i * 3] = c.x;
+    f[i * 3 + 1] = c.z;
+    f[i * 3 + 2] = c.heading;
+  });
+  recording.push(f);
+}
+
+// 記録の時刻 t (秒) の車の位置に、車を置く (間は直線で補う)
+function applyReplay(r: Race, t: number): void {
+  const pos = Math.min(recording.length - 1, t / REC_STEP);
+  const a = Math.floor(pos);
+  const b = Math.min(recording.length - 1, a + 1);
+  const k = pos - a;
+  const fa = recording[a];
+  const fb = recording[b];
+  r.cars.forEach((c, i) => {
+    c.x = fa[i * 3] + (fb[i * 3] - fa[i * 3]) * k;
+    c.z = fa[i * 3 + 1] + (fb[i * 3 + 1] - fa[i * 3 + 1]) * k;
+    c.heading = fa[i * 3 + 2] + (fb[i * 3 + 2] - fa[i * 3 + 2]) * k;
+  });
+}
+
+// リプレイ中にタップしたら、結果へ進む
+window.addEventListener('pointerdown', () => {
+  if (race && mode === 'race' && replayAt > 0) finishRace();
+});
 let firstPerson = false;
 let mode: 'screen' | 'race' | 'result' | 'preview' = 'screen';
 let previewRace: Race | null = null; // 設定の後ろで見せる一人称の画面 (走らせない)
@@ -292,6 +328,9 @@ function startRace(c: Course): void {
   lastPitStops = 0;
   stallShown = false;
   dnfAt = 0;
+  replayAt = 0;
+  recording = [];
+  recTimer = 0;
   firstPerson = false;
   input.gyro.calibrate();
   mode = 'race';
@@ -368,6 +407,14 @@ createFixedStepLoop(
     if (race && mode === 'race') {
       const before = race.player.durability;
       const controls = input.poll(dt);
+      // ゴールまでの走りを記録する
+      if (race.phase !== 'finished') {
+        recTimer += dt;
+        if (recTimer >= REC_STEP) {
+          recTimer -= REC_STEP;
+          record(race);
+        }
+      }
       race.update(dt, controls);
       // ぶつかった場所を、車体へへこませる
       world.applyImpacts(race.drainImpacts());
@@ -386,8 +433,13 @@ createFixedStepLoop(
       sound.frame(race.player.speed, controls.gas, controls.nitro && race.player.nitro > 0);
       // 失格は爆発を見せてから結果を出す。完走は、すぐに結果を出す
       if (race.phase === 'finished') {
-        if (race.outcome !== 'dnf') finishRace();
-        else if (dnfAt === 0) dnfAt = performance.now();
+        if (race.outcome !== 'dnf') {
+          // 完走はリプレイを流してから結果を出す
+          if (replayAt === 0) {
+            replayAt = performance.now();
+            ui.hideHud();
+          } else if (((performance.now() - replayAt) / 1000) * REPLAY_RATE >= (recording.length - 1) * REC_STEP) finishRace();
+        } else if (dnfAt === 0) dnfAt = performance.now();
         else if (performance.now() - dnfAt > 2200) finishRace();
       }
     }
@@ -400,7 +452,13 @@ createFixedStepLoop(
       world.frame(vdt, previewRace.player, true);
       world.render();
     }
-    if (race && (mode === 'race' || mode === 'result')) {
+    if (race && mode === 'race' && replayAt > 0) {
+      // ゴール後のリプレイ: スタートからの走りを、ドローンで追う
+      const t = ((now - replayAt) / 1000) * REPLAY_RATE;
+      applyReplay(race, t);
+      world.frame(vdt, race.player, false, t);
+      world.render();
+    } else if (race && (mode === 'race' || mode === 'result')) {
       world.frame(vdt, race.player, firstPerson);
       if (mode === 'race') ui.updateHud(race, firstPerson);
       world.render();
