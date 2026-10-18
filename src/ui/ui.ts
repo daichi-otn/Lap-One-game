@@ -258,6 +258,7 @@ export class UI {
         ${viewSlider(settings.view, 'height', '目の高さ', 0.9, 1.8, 0.05)}
         ${viewSlider(settings.view, 'pitch', '見上げ・見下げ', -10, 20, 1)}
         ${viewSlider(settings.view, 'depth', '前後の位置', -0.6, 0.6, 0.05)}
+        ${viewSlider(settings.view, 'side', '左右の位置', -0.8, 0.8, 0.05)}
         <div class="menu"><button class="btn" data-act="view-reset">初期値に戻す</button></div>
       </div>
       <div class="card">

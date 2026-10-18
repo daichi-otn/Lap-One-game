@@ -39,6 +39,31 @@ export function softBox(w: number, h: number, d: number, r = 0.06): THREE.Buffer
   return geo;
 }
 
+// 革の細かいシボ (凹凸)。キャンバスに乱数の点を描いて作り、一度だけ作って使い回す
+let grainCache: THREE.CanvasTexture | null = null;
+function leatherGrain(): THREE.CanvasTexture {
+  if (grainCache) return grainCache;
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 2400; i++) {
+      const g = 90 + Math.floor(Math.random() * 110);
+      ctx.fillStyle = `rgb(${g},${g},${g})`;
+      ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  grainCache = tex;
+  return tex;
+}
+
 // 運転席の内装。seat / handle は装着中のパーツの段階 (1 が標準、2 と 3 が上位)
 export function buildCockpit(look: { seat?: number; handle?: number } = {}): THREE.Group {
   const seatTier = look.seat ?? 1;
@@ -47,7 +72,8 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
 
   // 素材: 黒のソフトレザー、ダッシュの樹脂、アルミのアクセント、発光する表示
   const seatColor = seatTier === 1 ? 0x23262a : seatTier === 2 ? 0x2a2d33 : 0x17191c;
-  const leather = new THREE.MeshStandardMaterial({ color: seatColor, roughness: 0.8 });
+  // 革: 少し光沢があり、シボの凹凸が見える
+  const leather = new THREE.MeshStandardMaterial({ color: seatColor, roughness: 0.5, bumpMap: leatherGrain(), bumpScale: 0.8 });
   const seatAccent = new THREE.MeshStandardMaterial({ color: seatTier === 1 ? seatColor : 0xc62828, roughness: 0.6 });
   const dashMat = new THREE.MeshStandardMaterial({ color: 0x17191c, roughness: 0.7 });
   const padMat = new THREE.MeshStandardMaterial({ color: 0x25282d, roughness: 0.95 }); // ソフトタッチの上面
@@ -179,6 +205,8 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   // 運転席と助手席: 座面、背もたれ、ヘッドレスト、(上位は) サイドのサポート
   for (const x of [-0.4, 0.4]) {
     addTo(softBox(0.52, 0.16, 0.56), leather, x, 0.42, -0.18);
+    // 座面の縫い目 (ステッチ)
+    for (const dz of [-0.2, 0.2]) addTo(softBox(0.44, 0.004, 0.006), stitch, x, 0.503, -0.18 + dz);
     if (seatTier >= 2) {
       for (const side of [1, -1]) addTo(softBox(0.06, 0.28, 0.46), seatAccent, x + side * 0.27, 0.6, -0.42, -0.08);
     }

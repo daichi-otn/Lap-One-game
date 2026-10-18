@@ -42,13 +42,14 @@ export function storeAdmin(admin: AdminSettings): void {
     // 保存失敗は無視
   }
 }
-// 一人称の目の位置: 高さ (m)、見上げ・見下げ (度、正が上)、前後の位置 (m、正が前)
+// 一人称の目の位置: 高さ (m)、見上げ・見下げ (度、正が上)、前後の位置 (m、正が前)、左右の位置 (m、正が右)
 export interface FirstPersonView {
   height: number;
   pitch: number;
   depth: number;
+  side: number;
 }
-export const DEFAULT_VIEW: FirstPersonView = { height: 1.2, pitch: 0, depth: -0.2 };
+export const DEFAULT_VIEW: FirstPersonView = { height: 1.2, pitch: 0, depth: -0.2, side: -0.4 };
 
 export interface Settings {
   quality: Quality;

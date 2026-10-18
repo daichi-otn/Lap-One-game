@@ -489,7 +489,7 @@ export class World {
       // 目の位置は座席の後ろ寄り。ダッシュボードとハンドルが視界の下に入るように、画角を少し広げる
       this.setFov(72);
       const v = this.view;
-      this.camera.position.set(player.x + fx * v.depth - rx * 0.4, v.height, player.z + fz * v.depth - rz * 0.4);
+      this.camera.position.set(player.x + fx * v.depth + rx * v.side, v.height, player.z + fz * v.depth + rz * v.side);
       this.camera.lookAt(player.x + fx * 30, v.height + 30 * Math.tan((v.pitch * Math.PI) / 180), player.z + fz * 30);
       this.camPos.copy(this.camera.position);
     } else {
