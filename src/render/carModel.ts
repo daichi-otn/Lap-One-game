@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildCockpit } from './cockpit';
 import { TIER_COLORS, tierColor } from './tierColors';
+import { fireTexture } from './effects';
 
 // 車のモデル: "Midnight Blue Sports Car" by Nathan Kiplinger (CC0, SummerEngine) を使う
 // 前方は +Z。ボンネットは蝶番の周りで開き、タイヤは車体と別に回る
@@ -448,18 +449,17 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
     const flame = new THREE.Group();
     flame.name = 'flame';
     flame.position.set(0.96, -0.12, z);
-    const core = new THREE.Mesh(
-      new THREE.ConeGeometry(0.035, 0.22, 12),
-      new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.95, depthWrite: false }),
+    // 炎: 火の粒を後ろへ伸ばして重ねる (明るい芯と、外側のぼんやりした炎)
+    const core = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: fireTexture(), color: 0xfff1c2, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
     );
-    core.rotation.z = -Math.PI / 2;
-    core.position.x = 0.1;
-    const outer = new THREE.Mesh(
-      new THREE.ConeGeometry(0.06, 0.34, 12),
-      new THREE.MeshBasicMaterial({ color: 0xff6a1a, transparent: true, opacity: 0.55, depthWrite: false }),
+    core.position.x = 0.2;
+    core.scale.set(0.42, 0.22, 1);
+    const outer = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: fireTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.7 }),
     );
-    outer.rotation.z = -Math.PI / 2;
-    outer.position.x = 0.14;
+    outer.position.x = 0.34;
+    outer.scale.set(0.7, 0.34, 1);
     flame.add(core, outer);
     flame.visible = false;
     inner.add(flame);

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { Track } from '../game/track';
 import { RAIL_GAP, SAMPLES, pitLaneOffset, tangentAt } from '../game/track';
 import { REDLINE_RPM, type CarState } from '../game/car';
+import { Particles, fireTexture, smokeTexture } from './effects';
 import type { WeatherEffect } from '../game/weather';
 import { DEFAULT_VIEW, DEFAULT_WHEEL, type FirstPersonView, type Quality, type WheelOffset } from '../game/save';
 import { instantiateCar, loadCarTemplate, WHEEL_SPIN_RADIUS, type CarParts } from './carModel';
@@ -22,26 +23,55 @@ const RAIN_SPEED = 35;
 class Explosion {
   readonly group = new THREE.Group();
   private age = 0;
-  private fire: THREE.Mesh;
+  private smokeSpawned = 0;
   private ring: THREE.Mesh;
   private debris: { mesh: THREE.Mesh; v: THREE.Vector3 }[] = [];
-  private readonly life = 1.6; // 爆発の見た目の長さ
-  private readonly wreckLife = 22; // 残骸 (水たまり・火・破片) が残る長さ
-  private flames: THREE.Mesh[] = [];
+  private readonly life = 1.6; // 爆発の見た目の長さ (火球と閃光)
+  private readonly wreckLife = 22; // 残骸 (水たまり・火・破片・煙) が残る長さ
+  private flames: THREE.Sprite[] = [];
   private puddle: THREE.Mesh;
+  private fx = new Particles(); // 火球・閃光・煙の粒
+  private smokeTimer = 0;
 
   constructor(x: number, z: number) {
     this.group.position.set(x, 0.6, z);
-    this.fire = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 20, 16),
-      new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.95, depthWrite: false }),
-    );
+    this.group.add(this.fx.group);
+    // 閃光: 最初の一瞬だけ、明るく広がる
+    this.fx.add({
+      pos: new THREE.Vector3(0, 0, 0),
+      v: new THREE.Vector3(0, 0, 0),
+      life: 0.35,
+      size0: 1.5,
+      size1: 7,
+      texture: fireTexture(),
+      additive: true,
+      drag: 0,
+      color: 0xfff3c4,
+    });
+    // 火球: 火の粒が外へ飛び散り、大きくなって消える
+    for (let i = 0; i < 26; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 3 + Math.random() * 6;
+      const pos = new THREE.Vector3((Math.random() - 0.5) * 0.8, Math.random() * 0.4, (Math.random() - 0.5) * 0.8);
+      this.fx.add({
+        pos,
+        v: new THREE.Vector3(Math.cos(a) * sp, 2 + Math.random() * 4, Math.sin(a) * sp),
+        life: 0.8 + Math.random() * 0.6,
+        size0: 1.2 + Math.random() * 0.8,
+        size1: 3 + Math.random() * 2,
+        texture: fireTexture(),
+        additive: true,
+        opacity: 0.95,
+        drag: 2.2,
+      });
+    }
+    // 地面の輪
     this.ring = new THREE.Mesh(
       new THREE.RingGeometry(0.6, 0.75, 36),
       new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }),
     );
     this.ring.rotation.x = -Math.PI / 2;
-    this.group.add(this.fire, this.ring);
+    this.group.add(this.ring);
     // ガソリンの水たまり: 黒く光沢のある円盤 (地面すれすれ)
     this.puddle = new THREE.Mesh(
       new THREE.CircleGeometry(1.8, 40),
@@ -51,13 +81,15 @@ class Explosion {
     this.puddle.position.y = -0.55;
     this.puddle.visible = false;
     this.group.add(this.puddle);
-    // くすぶる火: 残骸のまわりでゆらぐ炎
-    const flameMat = new THREE.MeshBasicMaterial({ color: 0xff8c2a, transparent: true, opacity: 0.85, depthWrite: false });
+    // くすぶる火: 残骸のまわりでゆらぐ火の粒
     for (let i = 0; i < 7; i++) {
-      const f = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.1, 10), flameMat);
+      const f = new THREE.Sprite(
+        new THREE.SpriteMaterial({ map: fireTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.85 }),
+      );
       const a = Math.random() * Math.PI * 2;
       const r = Math.random() * 1.4;
-      f.position.set(Math.cos(a) * r, -0.05, Math.sin(a) * r);
+      f.position.set(Math.cos(a) * r, -0.2, Math.sin(a) * r);
+      f.scale.set(1.1, 1.5, 1);
       f.visible = false;
       this.group.add(f);
       this.flames.push(f);
@@ -77,11 +109,9 @@ class Explosion {
   update(dt: number): boolean {
     this.age += dt;
     const t = Math.min(1, this.age / this.life);
-    const grow = Math.min(1, this.age * 5);
-    this.fire.scale.setScalar(0.4 + 2.2 * grow * (1 - t * 0.5));
-    (this.fire.material as THREE.MeshBasicMaterial).opacity = 0.95 * (1 - t);
     this.ring.scale.setScalar(1 + this.age * 9);
     (this.ring.material as THREE.MeshBasicMaterial).opacity = 0.8 * (1 - t);
+    this.ring.visible = this.age < this.life;
     for (const d of this.debris) {
       d.v.y -= 9.8 * dt;
       d.mesh.position.addScaledVector(d.v, dt);
@@ -93,19 +123,47 @@ class Explosion {
       d.mesh.rotation.x += dt * 8;
       d.mesh.rotation.z += dt * 6;
     }
-    // 残骸: 水たまりと火は、しばらく残ってから消える
+    // 黒い煙: 爆発の直後から、しばらく立ち上る
+    if (this.age < 2.5) {
+      this.smokeTimer -= dt;
+      if (this.smokeTimer <= 0) {
+        this.smokeTimer = 0.12;
+        this.spawnSmoke(this.age < 0.6 ? 1.6 : 0.9);
+      }
+    }
+    this.fx.update(dt);
+    // 残骸: 水たまりと火は、しばらく残ってから消える。くすぶる煙も出る
     const wreck = this.age > this.life;
     this.puddle.visible = wreck;
-    for (const f of this.flames) {
-      f.visible = wreck;
-      if (wreck) f.scale.set(1, 0.7 + Math.random() * 0.8, 1);
-    }
     const fade = Math.min(1, Math.max(0, (this.wreckLife - this.age) / 3));
     (this.puddle.material as THREE.MeshPhysicalMaterial).opacity = 0.92 * fade;
-    for (const f of this.flames) (f.material as THREE.MeshBasicMaterial).opacity = 0.85 * fade;
-    this.fire.visible = this.age < this.life;
-    this.ring.visible = this.age < this.life;
-    return this.age < this.wreckLife;
+    for (const f of this.flames) {
+      f.visible = wreck;
+      f.scale.set(1.1, 1.2 + Math.random() * 0.9, 1);
+      (f.material as THREE.SpriteMaterial).opacity = 0.85 * fade;
+    }
+    if (wreck && this.age < this.wreckLife - 3) {
+      this.smokeTimer -= dt;
+      if (this.smokeTimer <= 0) {
+        this.smokeTimer = 0.35;
+        this.spawnSmoke(0.5);
+      }
+    }
+    return this.age < this.wreckLife || this.fx.alive > 0;
+  }
+
+  // 煙の粒を一つ出す (強さで大きさと勢いが変わる)
+  private spawnSmoke(strength: number): void {
+    this.fx.add({
+      pos: new THREE.Vector3((Math.random() - 0.5) * 1.2, 0.4, (Math.random() - 0.5) * 1.2),
+      v: new THREE.Vector3((Math.random() - 0.5) * 0.6, 2.5 + strength * 1.2, (Math.random() - 0.5) * 0.6),
+      life: 3.5 + Math.random() * 1.5,
+      size0: 1.4 * strength,
+      size1: 5 + 2 * strength,
+      texture: smokeTexture(true),
+      opacity: 0.85,
+      drag: 0.35,
+    });
   }
 }
 
@@ -131,6 +189,8 @@ export class World {
   private normalsTimer = 0;
   private flying: { mesh: THREE.Object3D; v: THREE.Vector3; w: THREE.Vector3; age: number }[] = [];
   private explosions: Explosion[] = [];
+  private readonly particles = new Particles(); // エンストの煙
+  private stallTimers = new Map<CarState, number>();
   private quality: Quality = 'medium';
   private camPos = new THREE.Vector3();
   private snap = true;
@@ -142,6 +202,7 @@ export class World {
     container.appendChild(this.renderer.domElement);
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.1));
     this.scene.add(this.sun, this.sun.target);
+    this.scene.add(this.particles.group);
     this.sun.shadow.mapSize.set(1024, 1024);
     Object.assign(this.sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 1, far: 400 });
     this.sun.shadow.camera.updateProjectionMatrix();
@@ -178,6 +239,8 @@ export class World {
     this.cars.clear();
     // 前のレースの爆発・残骸・飛んだ部品も消す
     for (const e of this.explosions) this.scene.remove(e.group);
+    this.particles.clear();
+    this.stallTimers.clear();
     this.explosions = [];
     for (const f of this.flying) this.scene.remove(f.mesh);
     this.flying = [];
@@ -463,6 +526,27 @@ export class World {
         parts.cockpit!.visible = car.isPlayer && firstPerson;
       }
       // 一人称のときは、運転席の画面に地図を描く
+      // エンストした車からは、白っぽい煙が出る (失格までの間)
+      if (car.stalled && !car.dnf) {
+        const left = (this.stallTimers.get(car) ?? 0) - dt;
+        if (left <= 0) {
+          this.stallTimers.set(car, 0.1);
+          const fwdX = Math.sin(car.heading);
+          const fwdZ = Math.cos(car.heading);
+          this.particles.add({
+            pos: new THREE.Vector3(car.x + fwdX * 1.1, 0.8, car.z + fwdZ * 1.1),
+            v: new THREE.Vector3(-fwdX * 0.9 + (Math.random() - 0.5), 1.6, -fwdZ * 0.9 + (Math.random() - 0.5)),
+            life: 2.2,
+            size0: 0.6,
+            size1: 2.4,
+            texture: smokeTexture(false),
+            opacity: 0.8,
+            drag: 0.5,
+          });
+        } else {
+          this.stallTimers.set(car, left);
+        }
+      }
       // 運転席のハンドルは、切った向きに回る
       const wheel = parts.cockpit?.userData.wheel as THREE.Object3D | undefined;
       if (wheel) wheel.rotation.z = -car.wheelTurn * 1.2;
@@ -526,6 +610,7 @@ export class World {
 
     this.sun.position.set(player.x + 40, 80, player.z + 30);
     this.sun.target.position.set(player.x, 0, player.z);
+    this.particles.update(dt);
     this.updateRain(dt, player.x, player.z);
     this.updateExplosions(dt);
     this.updateFlying(dt);
