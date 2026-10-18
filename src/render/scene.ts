@@ -334,6 +334,13 @@ export class World {
     });
   }
 
+  // 画角を変えたら、投影行列を作り直す
+  private setFov(fov: number): void {
+    if (this.camera.fov === fov) return;
+    this.camera.fov = fov;
+    this.camera.updateProjectionMatrix();
+  }
+
   // 毎フレーム: 車の位置・カメラ・雨を更新
   frame(dt: number, player: CarState, firstPerson: boolean): void {
     for (const [car, group] of this.cars) {
@@ -372,10 +379,13 @@ export class World {
       // 運転席: 車の右側 (日本の右ハンドル車に合わせる) の頭の位置から前を見る
       const rx = Math.cos(player.heading);
       const rz = -Math.sin(player.heading);
-      this.camera.position.set(player.x + fx * 0.15 - rx * 0.4, 1.5, player.z + fz * 0.15 - rz * 0.4);
-      this.camera.lookAt(player.x + fx * 30, 1.35, player.z + fz * 30);
+      // 目の位置は座席の後ろ寄り。ダッシュボードとハンドルが視界の下に入るように、画角を少し広げる
+      this.setFov(72);
+      this.camera.position.set(player.x - fx * 0.2 - rx * 0.4, 1.5, player.z - fz * 0.2 - rz * 0.4);
+      this.camera.lookAt(player.x + fx * 30, 1.3, player.z + fz * 30);
       this.camPos.copy(this.camera.position);
     } else {
+      this.setFov(60);
       const desired = new THREE.Vector3(player.x - fx * 11, 5, player.z - fz * 11);
       if (this.snap) this.camPos.copy(desired);
       else this.camPos.lerp(desired, 1 - Math.exp(-6 * dt));
