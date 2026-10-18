@@ -741,21 +741,24 @@ function buildBarriers(track: Track): THREE.Group {
     posts.count = n;
     group.add(posts);
   }
-  // 観客席: 片側の外側に、8 段の階段。数区間ごとに建てる
+  // 観客席: 外周の両側に、8 段の階段。コース全体をぐるりと囲む (ピットの区間だけ切る)
   const seatColors = [0x34495e, 0x7b3f3f, 0x3e6b4f, 0x6b5a2e];
   const seatMats = seatColors.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, side: THREE.DoubleSide }));
   const standMat = new THREE.MeshStandardMaterial({ color: 0x8b93a0, roughness: 0.8, side: THREE.DoubleSide });
-  const span = SAMPLES / 8;
-  for (let w = 0; w < 8; w++) {
-    if (w % 3 === 2) continue;
-    const s0 = Math.round(w * span);
-    const s1 = Math.round((w + 1) * span) - 1;
-    if (s1 >= pitStart && s0 <= pitEnd) continue;
-    for (let k = 0; k < STAND_TIERS; k++) {
-      const front = half + STAND_GAP + k * 0.9;
-      const top = (k + 1) * 0.5;
-      group.add(ribbon(track, s0, s1, [front, 0], [front, top], standMat)); // 前面
-      group.add(ribbon(track, s0, s1, [front, top], [front + 0.9, top], seatMats[(k + w) % seatMats.length])); // 座席の段
+  const windows = 24;
+  const span = SAMPLES / windows;
+  for (const side of [1, -1]) {
+    for (let w = 0; w < windows; w++) {
+      const s0 = Math.round(w * span);
+      const s1 = Math.round((w + 1) * span) - 1;
+      if (s1 >= pitStart && s0 <= pitEnd) continue;
+      for (let k = 0; k < STAND_TIERS; k++) {
+        const front = half + STAND_GAP + k * 0.9;
+        const top = (k + 1) * 0.5;
+        // 外側に向けて (side の向きに) 段を重ねる
+        group.add(ribbon(track, s0, s1, [side * front, 0], [side * front, top], standMat)); // 前面
+        group.add(ribbon(track, s0, s1, [side * front, top], [side * (front + 0.9), top], seatMats[(k + w) % seatMats.length])); // 座席の段
+      }
     }
   }
   return group;
