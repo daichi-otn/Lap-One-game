@@ -711,25 +711,29 @@ function buildBarriers(track: Track): THREE.Group {
   // ピットの区間は、ガードレールと観客席を切って通り道を空ける
   const pitStart = track.pitFrom - 20;
   const pitEnd = track.pitTo + 20;
-  // ガードレール: 両側に、支柱 (一定間隔) と、上下二段の金属の横板
-  const railMat = new THREE.MeshStandardMaterial({ color: 0xcfd7df, metalness: 0.85, roughness: 0.28, side: THREE.DoubleSide });
-  const postMat = new THREE.MeshStandardMaterial({ color: 0x59636d, metalness: 0.6, roughness: 0.5 });
+  // ガードレール: 両側に、支柱 (一定間隔) と、太い二段の金属の横板 (レースのコースの防護壁の形)
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xd5dde5, metalness: 0.85, roughness: 0.25, side: THREE.DoubleSide });
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x4f5961, metalness: 0.6, roughness: 0.5 });
   const dummy = new THREE.Object3D();
   const postEvery = 4; // サンプルの間隔 (およそ数 m ごと)
   const postCount = Math.ceil((pitStart + SAMPLES - pitEnd) / postEvery);
   for (const side of [1, -1]) {
     const off = side * (half + RAIL_GAP);
-    // 上の板と下の板 (少し引っ込めて、二段に見せる)
-    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off, 0.62], [off, 0.82], railMat));
-    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off - side * 0.06, 0.3], [off - side * 0.06, 0.5], railMat));
+    const thick = side * 0.14; // 板の厚み (外側へ重ねて太く見せる)
+    // 上の板: 厚みを持たせるために二枚重ね
+    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off, 0.6], [off, 0.92], railMat));
+    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off + thick, 0.6], [off + thick, 0.92], railMat));
+    // 下の板
+    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off, 0.22], [off, 0.52], railMat));
+    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off + thick, 0.22], [off + thick, 0.52], railMat));
     // 支柱
-    const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.95, 0.12), postMat, postCount);
+    const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.16, 1.05, 0.16), postMat, postCount);
     let n = 0;
     for (let j = pitEnd; j <= pitStart + SAMPLES && n < postCount; j += postEvery) {
       const k = j % SAMPLES;
       const c = track.pts[k];
       const t = tangentAt(track.pts, k);
-      dummy.position.set(c.x - t.z * (off - side * 0.03), 0.475, c.z + t.x * (off - side * 0.03));
+      dummy.position.set(c.x - t.z * (off + thick * 0.5 - side * 0.04), 0.525, c.z + t.x * (off + thick * 0.5 - side * 0.04));
       dummy.rotation.set(0, Math.atan2(t.x, t.z), 0);
       dummy.updateMatrix();
       posts.setMatrixAt(n++, dummy.matrix);
