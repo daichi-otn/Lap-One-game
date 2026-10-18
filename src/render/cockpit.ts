@@ -120,9 +120,11 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   // ステアリング: 3本スポーク、軸は運転手の方へ傾ける
   const wheelPos = { x: -0.4, y: 0.88, z: 0.45 };
   const steering = new THREE.Group();
-  steering.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
-  // 輪の面は運転手の方を向き、上部がダッシュ側へ少し倒れている
-  steering.rotation.x = 0.45;
+  // 傾き (tilt) の中で、ハンドルだけが回る (spin)。輪の面は運転手の方を向き、上部がダッシュ側へ少し倒れている
+  const tilt = new THREE.Group();
+  tilt.position.set(wheelPos.x, wheelPos.y, wheelPos.z);
+  tilt.rotation.x = 0.45;
+  cockpit.add(tilt);
   // リムは楕円に近いので、横を少し広くする
   const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.024, 12, 40), leather);
   rim.scale.set(1, 0.9, 1);
@@ -151,7 +153,7 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
     button.position.set(x, -0.04, 0.02);
     steering.add(button);
   }
-  cockpit.add(steering);
+  tilt.add(steering);
   // ハンドルの軸 (ステアリングコラム)
   addTo(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 16), dashMat, -0.4, 0.84, 0.6, Math.PI / 2 - 0.2);
 
@@ -185,5 +187,6 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   addTo(softBox(0.36, 0.02, 0.22), trimMat, -0.35, 0.12, 0.92);
 
   cockpit.userData.nav = { canvas: navCanvas, texture: navTex } satisfies NavScreen;
+  cockpit.userData.wheel = steering;
   return cockpit;
 }

@@ -105,6 +105,7 @@ export interface CarState {
   rpm: number; // エンジンの回転数
   gear: number; // 今のギア (0 始まり)
   shiftTimer: number; // 変速中の残り時間 (秒)
+  wheelTurn: number; // ハンドルの切れ具合 (-1 から 1)。運転席のハンドルを回すのに使う
   redTime: number; // レッドゾーンに入っている時間 (秒)
   stalled: boolean; // エンストした (大破はしない)
   stalledFor: number; // エンストしてから経った時間 (秒)
@@ -113,6 +114,7 @@ export interface CarState {
 // 1フレーム分の走行。戻り値は今フレームで受けたダメージ
 export function stepCar(car: CarState, input: CarInput, dt: number, env: Env, track: Track): number {
   let damage = 0;
+  car.wheelTurn = input.steer;
   const half = track.course.width / 2;
 
   const before = track.pts[nearestIndex(track, car.x, car.z)];

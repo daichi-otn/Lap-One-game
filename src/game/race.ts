@@ -257,6 +257,7 @@ function makeCar(
     rpm: 900,
     gear: 0,
     shiftTimer: 0,
+    wheelTurn: 0,
     prevS: track.cum[idx],
     dist: 0,
     finished: false,

@@ -425,6 +425,9 @@ export class World {
         parts.cockpit!.visible = car.isPlayer && firstPerson;
       }
       // 一人称のときは、運転席の画面に地図を描く
+      // 運転席のハンドルは、切った向きに回る
+      const wheel = parts.cockpit?.userData.wheel as THREE.Object3D | undefined;
+      if (wheel) wheel.rotation.z = -car.wheelTurn * 4;
       const nav = parts.cockpit?.userData.nav as NavScreen | undefined;
       if (car.isPlayer && firstPerson && nav) this.drawNav(nav, car);
       // タイヤは速さに合わせて回す
