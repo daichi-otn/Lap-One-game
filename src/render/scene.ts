@@ -701,6 +701,41 @@ function buildRoad(track: Track): THREE.Group {
   return group;
 }
 
+// アスファルトの質感: 細かい粒、所々の補修跡、薄い継ぎ目 (横にも縦にも繰り返せる模様)
+let roadTexture: THREE.CanvasTexture | null = null;
+function asphaltTexture(): THREE.CanvasTexture {
+  if (roadTexture) return roadTexture;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#c8c8c8';
+    ctx.fillRect(0, 0, 256, 256);
+    // 細かい粒
+    for (let i = 0; i < 5000; i++) {
+      const g = 110 + Math.floor(Math.random() * 130);
+      ctx.fillStyle = `rgb(${g},${g},${g})`;
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 1.5, 1 + Math.random() * 1.5);
+    }
+    // 補修跡 (少し暗い色の楕円)
+    for (let i = 0; i < 14; i++) {
+      ctx.fillStyle = 'rgba(50, 50, 56, 0.32)';
+      ctx.beginPath();
+      ctx.ellipse(Math.random() * 256, Math.random() * 256, 6 + Math.random() * 18, 3 + Math.random() * 8, Math.random() * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 継ぎ目
+    ctx.fillStyle = 'rgba(90, 90, 95, 0.5)';
+    ctx.fillRect(0, 0, 256, 2);
+    ctx.fillRect(0, 128, 256, 1.5);
+  }
+  roadTexture = new THREE.CanvasTexture(canvas);
+  roadTexture.wrapS = THREE.RepeatWrapping;
+  roadTexture.wrapT = THREE.RepeatWrapping;
+  return roadTexture;
+}
+
 // 同じ並びになる乱数 (コースごとに決まる)
 function seeded(seed: number): () => number {
   let a = Math.floor(seed) >>> 0;
@@ -951,6 +986,7 @@ function stripMesh(
 ): THREE.Mesh {
   const pos = new Float32Array((SAMPLES + 1) * 6);
   const col = new Float32Array((SAMPLES + 1) * 6);
+  const uv = new Float32Array((SAMPLES + 1) * 4);
   const idx: number[] = [];
   for (let i = 0; i <= SAMPLES; i++) {
     const j = i % SAMPLES;
@@ -962,16 +998,20 @@ function stripMesh(
     const a = i * 2;
     pos.set([p.x + nx * from, y, p.z + nz * from, p.x + nx * to, y, p.z + nz * to], a * 3);
     col.set([c.r, c.g, c.b, c.r, c.g, c.b], a * 3);
+    // 質感の座標: 横は帯の幅、縦は道のりに沿って (8 m ごとに繰り返す)。周回の継ぎ目でもずれないように、i で数える
+    const v = ((i / SAMPLES) * track.length) / 8;
+    uv.set([0, v, 1, v], a * 2);
     if (i < SAMPLES) idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
   const mesh = new THREE.Mesh(
     geo,
-    new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide }),
+    new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, map: asphaltTexture(), roughness: 0.9 }),
   );
   mesh.receiveShadow = true;
   return mesh;
