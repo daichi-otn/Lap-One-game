@@ -12,6 +12,7 @@ export interface RaceSetup {
   playerLook?: Record<string, number>; // 自分の車の見た目 (装着中のパーツ)
   aiMods: Mods[];
   aiStrength?: number; // 開発者モードで変える CPU の強さ (1 が標準)
+  autoDrive?: boolean; // ハンドルだけ操作し、アクセルとブレーキは自動
 }
 
 export const PLAYER_COLOR = 0xe53935;
@@ -38,8 +39,11 @@ export class Race {
   private inPit = false;
   static readonly PIT_SECONDS = 60; // ピットの時間 (ゲーム内の時間)
 
+  private autoDrive: boolean;
+
   constructor(setup: RaceSetup) {
     this.track = setup.track;
+    this.autoDrive = setup.autoDrive ?? false;
     const w = WEATHER[setup.weather];
     this.env = { grip: w.grip, brake: w.brake, wet: w.wet, wind: w.wind, time: 0 };
 
@@ -88,7 +92,7 @@ export class Race {
 
     for (const car of this.cars) {
       if (car.dnf || car.finished) continue;
-      const ci = car.isPlayer ? input : aiInput(car, this.track, this.player);
+      const ci = car.isPlayer ? (this.autoDrive ? this.autoPedals(car, input) : input) : aiInput(car, this.track, this.player);
       this.damage(car, stepCar(car, ci, dt, this.env, this.track));
       if (car.wallImpact) {
         this.impacts.push(car.wallImpact);
@@ -117,6 +121,13 @@ export class Race {
 
   // 順位 (完走順 → 走行距離順、失格は最下位)
   // 画面へ渡すための衝突の記録を取り出す (取り出すと空になる)
+  // ハンドルだけ操作するとき、アクセルとブレーキは、コースの速さの目安に合わせて自動で操作する
+  private autoPedals(car: CarState, input: CarInput): CarInput {
+    const near = nearestIndex(this.track, car.x, car.z);
+    const target = this.track.maxSpeed[near] * 0.95;
+    return { steer: input.steer, gas: car.speed < target, brake: car.speed > target + 4, nitro: false };
+  }
+
   drainImpacts(): { car: CarState; impact: Impact }[] {
     const out = this.impacts.map((impact, i) => ({ car: this.impactCars[i], impact }));
     this.impacts = [];

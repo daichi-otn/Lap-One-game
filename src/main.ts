@@ -98,7 +98,7 @@ let firstPerson = false;
 let mode: 'screen' | 'race' | 'result' | 'preview' = 'screen';
 let previewRace: Race | null = null; // 設定の後ろで見せる一人称の画面 (走らせない)
 // 設定に関係する操作は、プレビューを続ける
-const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'view-reset', 'wheel-reset']);
+const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'auto-toggle', 'view-reset', 'wheel-reset']);
 
 const input = new Input(() => (firstPerson = !firstPerson));
 // 前回ジャイロを使っていたら、開始を試す (iOS は許可が要るので失敗しても止めない)
@@ -156,6 +156,11 @@ function act(name: string, arg?: string): void {
       settings = { ...settings, view: { ...DEFAULT_VIEW } };
       storeSettings(settings);
       world.setFirstPersonView(settings.view);
+      showSettings();
+      break;
+    case 'auto-toggle':
+      settings = { ...settings, autoDrive: !settings.autoDrive };
+      storeSettings(settings);
       showSettings();
       break;
     case 'sound-toggle':
@@ -334,6 +339,7 @@ function startRace(c: Course): void {
     weather,
     playerMods,
     playerLook: lookFromEquipped(save.equipped),
+    autoDrive: settings.autoDrive,
     aiMods: makeAiMods(cpuCount),
     aiStrength: dev ? admin.cpuStrength : 1,
   });

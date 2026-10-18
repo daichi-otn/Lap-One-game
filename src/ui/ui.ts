@@ -272,6 +272,11 @@ export class UI {
         <div class="menu"><button class="btn ${settings.sound ? 'active' : ''}" data-act="sound-toggle">効果音・エンジン音: ${settings.sound ? 'ON' : 'OFF'}</button></div>
       </div>
       <div class="card">
+        <p>運転の補助</p>
+        <div class="menu"><button class="btn ${settings.autoDrive ? 'active' : ''}" data-act="auto-toggle">ハンドルだけ操作: ${settings.autoDrive ? 'ON' : 'OFF'}</button></div>
+        <p class="note">ONにすると、アクセルとブレーキはコースに合わせて自動になります。ハンドルだけ操作します。</p>
+      </div>
+      <div class="card">
         <p>ハンドル</p>
         <div class="menu"><button class="btn ${settings.gyro ? 'active' : ''}" data-act="gyro-toggle">スマホを傾けて操作: ${settings.gyro ? 'ON' : 'OFF'}</button></div>
         <p class="note">ONにすると、スマホを左右に傾けてハンドルを切ります。構えはレース開始時の向きが「まっすぐ」になります。</p>

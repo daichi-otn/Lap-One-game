@@ -65,6 +65,7 @@ export interface Settings {
   gyro: boolean; // スマホを傾けてハンドル操作
   view: FirstPersonView;
   wheel: WheelOffset;
+  autoDrive: boolean; // ハンドルだけ操作し、アクセルとブレーキは自動
 }
 
 const SAVE_KEY = 'lapone.save.v1';
@@ -102,7 +103,7 @@ export function storeSave(save: SaveData): void {
 }
 
 export function loadSettings(): Settings {
-  const base: Settings = { quality: 'medium', sound: true, gyro: false, view: { ...DEFAULT_VIEW }, wheel: { ...DEFAULT_WHEEL } };
+  const base: Settings = { quality: 'medium', sound: true, gyro: false, view: { ...DEFAULT_VIEW }, wheel: { ...DEFAULT_WHEEL }, autoDrive: false };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
