@@ -6,11 +6,15 @@ export class Gyro {
   active = false;
   private value: number | null = null; // 今の傾き (度)
   private neutral: number | null = null; // まっすぐの構えの傾き
+  private wrapped = false; // 360 度でつながる値 (横持ちの回転) かどうか
 
   private onEvent = (e: DeviceOrientationEvent): void => {
-    // 横持ちは beta、縦持ちは gamma が左右の傾きになる
+    // 横持ちは、ハンドルのように画面の面に垂直な軸で回すので alpha (360 度でつながる)。
+    // 縦持ちは、左右に傾ける gamma を使う
     const angle = screen.orientation?.angle ?? 0;
-    const v = angle === 90 ? e.beta : angle === 270 || angle === -90 ? -(e.beta ?? 0) : e.gamma;
+    const landscape = angle === 90 || angle === 270 || angle === -90;
+    this.wrapped = landscape;
+    const v = angle === 90 ? e.alpha : landscape ? -(e.alpha ?? 0) : e.gamma;
     this.value = typeof v === 'number' ? v : null;
   };
 
@@ -45,7 +49,9 @@ export class Gyro {
   steer(): number {
     if (!this.active || this.value === null) return 0;
     if (this.neutral === null) this.neutral = this.value;
-    const d = this.value - this.neutral;
+    let d = this.value - this.neutral;
+    // 360 度でつながる値は、-180〜180 度の差に直す
+    if (this.wrapped) d = ((d + 540) % 360) - 180;
     const sign = Math.sign(d);
     const amount = Math.max(0, Math.abs(d) - DEAD_DEG) / (FULL_DEG - DEAD_DEG);
     return Math.max(-1, Math.min(1, sign * amount));
