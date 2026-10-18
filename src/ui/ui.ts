@@ -175,7 +175,9 @@ export class UI {
       (c: Course) => {
         const fee = c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun);
         return `
-        <div class="card">
+        <div class="card course-card">
+          <div class="course-map">${courseMapSvg(c)}</div>
+          <div class="course-info">
           <div class="card-head"><b>${c.name}</b><span class="tag">${c.difficulty}</span></div>
           <div class="muted">周回 ${c.laps} ／ 賞金倍率 ×${c.prizeMult}</div>
           <div class="muted">天候: ${Object.keys(c.weather).map((w) => weatherLabel(w)).join('・')}</div>
@@ -183,6 +185,7 @@ export class UI {
           <button class="btn" data-act="course" data-arg="${c.id}" ${save.coin < fee ? 'disabled' : ''}>
             出走（参加費 ${fee.toLocaleString()}）
           </button>
+          </div>
         </div>`;
       },
     ).join('');
@@ -443,6 +446,29 @@ export class UI {
 // オン・オフのスイッチ (ラベルの右にスイッチを置く)
 function switchRow(act: string, label: string, on: boolean): string {
   return `<button class="switch-row" data-act="${act}" role="switch" aria-checked="${on}"><span>${label}</span><span class="switch${on ? ' on' : ''}"></span></button>`;
+}
+
+// コースの地図: 中心線を線で描く (左右の幅は、道の太さで表す)
+function courseMapSvg(c: Course): string {
+  const xs = c.points.map((p) => p[0]);
+  const zs = c.points.map((p) => p[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minZ = Math.min(...zs);
+  const maxZ = Math.max(...zs);
+  const size = 100;
+  const pad = 8;
+  const scale = (size - pad * 2) / Math.max(maxX - minX, maxZ - minZ);
+  const ox = (size - (maxX - minX) * scale) / 2;
+  const oz = (size - (maxZ - minZ) * scale) / 2;
+  const d = c.points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'}${((p[0] - minX) * scale + ox).toFixed(1)} ${((p[1] - minZ) * scale + oz).toFixed(1)}`)
+    .join(' ') + ' Z';
+  const width = Math.max(3, c.width * scale * 0.35);
+  return `<svg viewBox="0 0 ${size} ${size}" aria-label="${c.name}のマップ">
+    <path d="${d}" fill="none" stroke="#66727e" stroke-width="${width.toFixed(1)}" stroke-linejoin="round"/>
+    <path d="${d}" fill="none" stroke="#f5f5f5" stroke-width="0.8" stroke-dasharray="2 2" stroke-linejoin="round"/>
+  </svg>`;
 }
 
 // 視点の設定のスライダーの表示
