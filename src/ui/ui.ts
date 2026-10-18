@@ -170,9 +170,10 @@ export class UI {
   }
 
   showCourses(save: SaveData): void {
-    const fee = entryFee(save.racesRun);
     const cards = COURSES.map(
-      (c: Course) => `
+      (c: Course) => {
+        const fee = c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun);
+        return `
         <div class="card">
           <div class="card-head"><b>${c.name}</b><span class="tag">${c.difficulty}</span></div>
           <div class="muted">周回 ${c.laps} ／ 賞金倍率 ×${c.prizeMult}</div>
@@ -181,13 +182,15 @@ export class UI {
           <button class="btn" data-act="course" data-arg="${c.id}" ${save.coin < fee ? 'disabled' : ''}>
             出走（参加費 ${fee.toLocaleString()}）
           </button>
-        </div>`,
+        </div>`;
+      },
     ).join('');
+    const anyAffordable = COURSES.some((c) => save.coin >= (c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun)));
     this.setScreen(`
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
       <h2>コースを選ぶ</h2>
       ${cards}
-      ${save.coin < fee ? '<p class="warn">コインが足りないため出走できません</p>' : ''}`);
+      ${anyAffordable ? '' : '<p class="warn">コインが足りないため出走できません</p>'}`);
   }
 
   showGarage(save: SaveData, opts: GarageOptions): void {

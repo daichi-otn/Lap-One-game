@@ -8,6 +8,7 @@ export interface Course {
   width: number;
   laps: number;
   prizeMult: number; // 賞金倍率
+  entryFee?: number; // このコース専用の参加費 (省略時は通常の参加費)
   ground: number; // 周囲の地面の色
   weather: Partial<Record<Weather, number>>; // 天候の出現重み
 }
@@ -77,6 +78,19 @@ export const COURSES: Course[] = [
     weather: { cloudy: 3, rain: 3, storm: 2, fog: 2 },
   },
 ];
+
+COURSES.push({
+  id: 'premium',
+  name: 'プレミアム・ナイトサーキット',
+  difficulty: '上級',
+  points: radial([420, 300, 460, 320, 440, 280, 400, 340, 470, 300, 430, 290], 1.2),
+  width: 20,
+  laps: 2,
+  prizeMult: 2.5,
+  entryFee: 5000,
+  ground: 0x2a2f3a,
+  weather: { rain: 3, fog: 2, storm: 2 },
+});
 
 export function findCourse(id: string | undefined): Course | undefined {
   return COURSES.find((c) => c.id === id);

@@ -58,6 +58,8 @@ let feePaid = 0;
 let lastPitStops = 0;
 let stallShown = false; // エンストの通知を一度だけ出すため
 let dnfAt = 0; // 失格になった時刻 (爆発を見せるため、結果を少し遅らせる)
+const PIT_REPAIR_MAX = 3000; // 耐久を全快するときの修理代の上限 (coin)
+const PIT_NITRO_PER_PERCENT = 5; // ニトロを 1% 補充するときの代金 (coin)
 let replayAt = 0; // ゴールした時刻 (リプレイを流してから結果を出す)
 // リプレイ: 走行中の車の位置を一定間隔で記録し、ゴール後に速めの速さで流す
 const REC_STEP = 0.1; // 記録の間隔 (秒)
@@ -317,7 +319,8 @@ function viewChange(key: keyof FirstPersonView, value: number): void {
 
 function startRace(c: Course): void {
   const free = ADMIN_ENABLED && (admin.noEntryFee || admin.infiniteCoin);
-  const fee = free ? 0 : entryFee(save.racesRun);
+  // コースごとの参加費 (初回は無料)
+  const fee = free ? 0 : c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun);
   if (save.coin < fee) {
     ui.toast(`コインが足りません（参加費 ${fee.toLocaleString()}）`);
     return;
@@ -446,7 +449,13 @@ createFixedStepLoop(
       if (hit > 2) sound.crash(Math.min(1, hit / 15));
       if (race.pitStops !== lastPitStops) {
         lastPitStops = race.pitStops;
-        ui.toast('ピット: 耐久が全快 (+1:00)', true);
+        // 修理代とニトロの補充は、持っているコインから払う (足りなければ残りだけ)
+        const bill = race.lastPitBill;
+        const cost = Math.round(bill.damage * PIT_REPAIR_MAX + bill.nitro * PIT_NITRO_PER_PERCENT);
+        const paid = Math.min(save.coin, cost);
+        save.coin -= paid;
+        storeSave(save);
+        ui.toast(`ピット: 耐久全快・ニトロ満タン (修理代 ${paid.toLocaleString()} coin)`, true);
         ui.pitFade();
       }
       if (race.player.stalled && !stallShown) {

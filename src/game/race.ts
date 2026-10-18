@@ -40,6 +40,7 @@ export class Race {
   static readonly PIT_SECONDS = 60; // ピットの時間 (ゲーム内の時間)
 
   private autoDrive: boolean;
+  lastPitBill = { damage: 0, nitro: 0 }; // 直近のピットの作業量 (0〜1 の損傷、ニトロの減り)
 
   constructor(setup: RaceSetup) {
     this.track = setup.track;
@@ -164,6 +165,9 @@ export class Race {
       inLane = lateral > offset * 0.6;
     }
     if (inLane && !this.inPit && p.speed < 25) {
+      // 修理代と、ニトロの補充の量 (お金の計算は画面側で行う)
+      this.lastPitBill = { damage: 1 - p.durability / p.maxDurability, nitro: 100 - p.nitro };
+      p.nitro = 100;
       p.durability = p.maxDurability;
       this.time += Race.PIT_SECONDS;
       this.pitStops++;
