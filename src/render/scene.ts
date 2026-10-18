@@ -711,11 +711,31 @@ function buildBarriers(track: Track): THREE.Group {
   // ピットの区間は、ガードレールと観客席を切って通り道を空ける
   const pitStart = track.pitFrom - 20;
   const pitEnd = track.pitTo + 20;
-  const railMat = new THREE.MeshStandardMaterial({ color: 0xc9d1d9, metalness: 0.5, roughness: 0.4, side: THREE.DoubleSide });
-  // ガードレール: 両側に、高さ 0.35〜0.9 m の帯
+  // ガードレール: 両側に、支柱 (一定間隔) と、上下二段の金属の横板
+  const railMat = new THREE.MeshStandardMaterial({ color: 0xcfd7df, metalness: 0.85, roughness: 0.28, side: THREE.DoubleSide });
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x59636d, metalness: 0.6, roughness: 0.5 });
+  const dummy = new THREE.Object3D();
+  const postEvery = 4; // サンプルの間隔 (およそ数 m ごと)
+  const postCount = Math.ceil((pitStart + SAMPLES - pitEnd) / postEvery);
   for (const side of [1, -1]) {
     const off = side * (half + RAIL_GAP);
-    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off, 0.35], [off, 0.9], railMat));
+    // 上の板と下の板 (少し引っ込めて、二段に見せる)
+    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off, 0.62], [off, 0.82], railMat));
+    group.add(ribbon(track, pitEnd, pitStart + SAMPLES, [off - side * 0.06, 0.3], [off - side * 0.06, 0.5], railMat));
+    // 支柱
+    const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.95, 0.12), postMat, postCount);
+    let n = 0;
+    for (let j = pitEnd; j <= pitStart + SAMPLES && n < postCount; j += postEvery) {
+      const k = j % SAMPLES;
+      const c = track.pts[k];
+      const t = tangentAt(track.pts, k);
+      dummy.position.set(c.x - t.z * (off - side * 0.03), 0.475, c.z + t.x * (off - side * 0.03));
+      dummy.rotation.set(0, Math.atan2(t.x, t.z), 0);
+      dummy.updateMatrix();
+      posts.setMatrixAt(n++, dummy.matrix);
+    }
+    posts.count = n;
+    group.add(posts);
   }
   // 観客席: 片側の外側に、8 段の階段。数区間ごとに建てる
   const seatColors = [0x34495e, 0x7b3f3f, 0x3e6b4f, 0x6b5a2e];
