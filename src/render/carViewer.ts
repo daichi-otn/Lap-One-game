@@ -11,31 +11,28 @@ const OPEN_ANGLE = HOOD_OPEN_ANGLE; // ボンネットを開く角度 (rad)
 const OPEN_TIME = 0.7; // 開く・閉じるのにかかる時間 (秒)
 const HOLD_TIME = 1.4; // 開いたままにする時間 (秒)
 
-// 部品ごとの見せ方。anchor は車の中での部品の場所 (車は原点、前は x 負)。
-// 車を回して、部品がカメラの側に来るようにする。dist はカメラと部品の距離
+// 部品ごとの見せ方 (車は原点、前は +Z、横は ±X)。寸法は実際の車から測った値
+// cam はカメラの位置、look は見る先。hood はボンネットを開ける、noFrontTire は前のタイヤを外す、cockpit は運転席から見せる
 interface Focus {
-  anchor: [number, number, number] | 'wheel'; // 'wheel' は前のタイヤ (読み込み後に決まる)
-  dist: number;
+  cam: [number, number, number];
+  look: [number, number, number];
   fov: number;
-  from: [number, number, number]; // 部品を見る方向 (車から見て。前は x 負、後ろは x 正、横は z)
-  hood?: boolean; // ボンネットを開ける (エンジン・ターボ)
-  noFrontTire?: boolean; // 前のタイヤを外す (ブレーキ・タイヤ)
-  cockpit?: boolean; // 運転席から見せる (ハンドル・シート)
+  hood?: boolean;
+  noFrontTire?: boolean;
+  cockpit?: boolean;
 }
 const FOCUS: Record<string, Focus> = {
-  engine: { anchor: [-0.6, 0.45, 0], dist: 4.5, fov: 42, hood: true, from: [-1, 0.2, 0] },
-  turbo: { anchor: [-0.6, 0.3, 0.12], dist: 4.2, fov: 42, hood: true, from: [-1, 0.2, 0.4] },
-  brake: { anchor: 'wheel', dist: 2.8, fov: 40, noFrontTire: true, from: [-1, 0, 1] },
-  tire: { anchor: 'wheel', dist: 3.2, fov: 42, noFrontTire: true, from: [-1, 0, 1] },
-  frame: { anchor: [0, 0.3, 0.2], dist: 5.0, fov: 40, from: [0, 0.2, 1] },
-  chassis: { anchor: [0, 0.1, 0.4], dist: 4.5, fov: 42, from: [0, 0.1, 1] },
-  window: { anchor: [0, 0.8, 0], dist: 4.6, fov: 40, from: [0, 0.2, 1] },
-  muffler: { anchor: [1.0, 0.05, 0], dist: 4.6, fov: 40, from: [1, 0.1, 0] },
-  seat: { anchor: [0.4, 0.6, -0.3], dist: 0, fov: 60, cockpit: true, from: [0, 0, 1] },
-  handle: { anchor: [0.4, 0.9, 0.45], dist: 0, fov: 60, cockpit: true, from: [0, 0, 1] },
+  engine: { cam: [0.2, 1.5, 4.2], look: [0, 0.7, 0.9], fov: 40, hood: true },
+  turbo: { cam: [2.2, 1.3, 1.9], look: [0, 0.8, 0.9], fov: 40, hood: true },
+  brake: { cam: [2.8, 0.9, 3.2], look: [0.83, 0.42, 1.53], fov: 38, noFrontTire: true },
+  tire: { cam: [2.8, 0.9, 3.2], look: [0.83, 0.42, 1.53], fov: 40, noFrontTire: true },
+  frame: { cam: [4.5, 0.8, 0], look: [0, 0.6, 0], fov: 40 },
+  chassis: { cam: [4.5, 0.3, 0], look: [0, 0.2, 0], fov: 42 },
+  window: { cam: [4.5, 1.5, 0], look: [0, 1.1, 0], fov: 40 },
+  muffler: { cam: [0.3, 1.0, -4.2], look: [0, 0.45, -2.0], fov: 40 },
+  seat: { cam: [0.6, 1.2, -0.2], look: [0.4, 0.6, 0.2], fov: 60, cockpit: true },
+  handle: { cam: [0.6, 1.2, -0.2], look: [0.4, 0.9, 0.45], fov: 60, cockpit: true },
 };
-// 部品を見るカメラの方向 (車の斜め前、少し上)
-const VIEW_DIR = new THREE.Vector3(1, 0.35, 1).normalize();
 
 // ガレージの左に映す自分の車。engineSwap が true のときは、ボンネットを開けてエンジンを見せる。
 // focus は選んでいる部品。その部品が一番見えるように、車を回してカメラを寄せる
@@ -76,45 +73,20 @@ export function startCarViewer(
   const car = new THREE.Group();
   scene.add(car);
   const target = FOCUS[focus];
-  // 部品の場所 (車の中の座標)。前のタイヤは読み込み後に決める
-  let anchor = new THREE.Vector3(...(target && target.anchor !== 'wheel' ? target.anchor : [0, 0.5, 0]));
-  let yawGoal = 0;
-  let hasAnchor = !!target && target.anchor !== 'wheel';
   void loadCarTemplate().then((template) => {
     const inst = instantiateCar(template, look);
     car.add(inst);
     car.userData = inst.userData;
     // 運転席の内装は、ハンドルとシートを選んだときと一人称のときだけ見せる
     (inst.userData as CarParts).cockpit.visible = false;
-    car.updateMatrixWorld(true);
-    if (target && target.anchor === 'wheel') {
-      // 前のタイヤを外すと、中のブレーキが見える
-      const spinners = (inst.userData as CarParts).spinners.slice(0, 2);
-      for (const sp of spinners) sp.getObjectByName('tire')?.removeFromParent();
-      if (spinners[0]) {
-        const w = new THREE.Vector3();
-        spinners[0].getWorldPosition(w);
-        anchor = w;
-        hasAnchor = true;
-      }
+    if (target?.noFrontTire) {
+      // 前の二つのタイヤ (前は +Z) を外すと、中のブレーキが見える
+      car.updateMatrixWorld(true);
+      const spinners = [...(inst.userData as CarParts).spinners].sort(
+        (a, b) => b.getWorldPosition(new THREE.Vector3()).z - a.getWorldPosition(new THREE.Vector3()).z,
+      );
+      for (const sp of spinners.slice(0, 2)) sp.getObjectByName('tire')?.removeFromParent();
     }
-    // 部品が一番カメラの側に来る車の向きを選ぶ (車は回転できる)
-    if (hasAnchor && target && !target.cockpit) {
-      let best = 0;
-      let bestScore = -Infinity;
-      const fromDir = new THREE.Vector3(...target.from).normalize();
-      for (let a = 0; a < Math.PI * 2; a += 0.02) {
-        const r = fromDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
-        const score = new THREE.Vector3(r.x, 0, r.z).normalize().dot(new THREE.Vector3(VIEW_DIR.x, 0, VIEW_DIR.z).normalize());
-        if (score > bestScore) {
-          bestScore = score;
-          best = a;
-        }
-      }
-      yawGoal = best;
-    }
-    // 運転席から見せるとき、ハンドルとシートは内装を見せる
-    if (target?.cockpit) (inst.userData as CarParts).cockpit.visible = true;
   });
 
   const resize = () => {
@@ -148,9 +120,7 @@ export function startCarViewer(
     last = now;
     const k = Math.min(1, dt * 4);
     const parts = car.userData as Partial<CarParts>;
-    // 車の向き: 部品を選んでいるときは、部品が見える向き。そうでなければ正面
-    car.rotation.y += (yawGoal - car.rotation.y) * k;
-    // ボンネット: エンジンを選んだときは開けたままにする。そうでなければ、エンジン交換の開閉
+    // ボンネット: エンジン・ターボを選んだときは開けたままにする。そうでなければ、エンジン交換の開閉
     if (parts.hinge) {
       const want = target?.hood ? -OPEN_ANGLE : -lidAngle((now - swapStart) / 1000);
       parts.hinge.rotation.z += (want - parts.hinge.rotation.z) * Math.min(1, dt * 6);
@@ -160,27 +130,17 @@ export function startCarViewer(
     if (parts.body) parts.body.visible = !interior;
     if (parts.cockpit) parts.cockpit.visible = interior;
     // 寄せる先
-    let posGoal: THREE.Vector3;
-    let lookGoal: THREE.Vector3;
+    let posGoal = new THREE.Vector3(6.4, 3.0, 8.4);
+    let lookGoal = new THREE.Vector3(0, 0.7, -0.3);
     let fov = 35;
     if (firstPerson) {
       posGoal = new THREE.Vector3(0.6, 1.2, -0.2);
       lookGoal = new THREE.Vector3(0, 1.3, 30);
       fov = 72;
-    } else if (target?.cockpit) {
-      // 運転席から、ハンドルやシートを見る
-      posGoal = new THREE.Vector3(0.6, 1.2, -0.2);
-      lookGoal = anchor.clone();
+    } else if (target) {
+      posGoal = new THREE.Vector3(...target.cam);
+      lookGoal = new THREE.Vector3(...target.look);
       fov = target.fov;
-    } else if (target && hasAnchor) {
-      // 部品の今の場所 (車の回転に合わせて動かす) の斜め前から見る
-      const rotated = anchor.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), car.rotation.y);
-      lookGoal = rotated;
-      posGoal = rotated.clone().addScaledVector(VIEW_DIR, target.dist).add(new THREE.Vector3(0, 0.9, 0));
-      fov = target.fov;
-    } else {
-      posGoal = new THREE.Vector3(6.4, 3.0, 8.4);
-      lookGoal = new THREE.Vector3(0, 0.7, -0.3);
     }
     camPos.lerp(posGoal, k);
     camLook.lerp(lookGoal, k);
