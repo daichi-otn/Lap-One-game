@@ -1,7 +1,7 @@
 import { COURSES, type Course } from '../game/courses';
 import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
-import { CAR_MODELS, carById, mulMods } from '../game/cars';
+import { CAR_MODELS, carById, mulMods, usedKey, usedPrice } from '../game/cars';
 import { PAINTS, PIT_INSURANCE_PRICE } from '../game/paints';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
 import { REDLINE_RPM, REDLINE_STALL_SECONDS } from '../game/car';
@@ -234,15 +234,19 @@ export class UI {
         ? '<span class="tag">加入中</span>'
         : `<button class="btn-small" data-act="buy-insurance" ${!freeParts && save.coin < PIT_INSURANCE_PRICE ? 'disabled' : ''}>購入 ${freeParts ? 0 : PIT_INSURANCE_PRICE.toLocaleString()}</button>`
     }</div>`;
-    const carRows = CAR_MODELS.map((car) => {
-      const owned = save.ownedCars.includes(car.id);
-      const equipped = save.equippedCar === car.id;
+    // 新車と中古車: 中古車は値段が安いが、耐久と性能が少し下がる
+    const carRow = (key: string, name: string, price: number): string => {
+      const owned = save.ownedCars.includes(key);
+      const equipped = save.equippedCar === key;
       let action = '';
       if (equipped) action = '<span class="tag">乗車中</span>';
-      else if (owned) action = `<button class="btn-small" data-act="equip-car" data-arg="${car.id}">乗る</button>`;
-      else action = `<button class="btn-small" data-act="buy-car" data-arg="${car.id}" ${!freeParts && save.coin < car.price ? 'disabled' : ''}>購入 ${freeParts ? 0 : car.price.toLocaleString()}</button>`;
-      return `<div class="row"><span>${car.name}</span>${action}</div>`;
-    }).join('');
+      else if (owned) action = `<button class="btn-small" data-act="equip-car" data-arg="${key}">乗る</button>`;
+      else action = `<button class="btn-small" data-act="buy-car" data-arg="${key}" ${!freeParts && save.coin < price ? 'disabled' : ''}>購入 ${freeParts ? 0 : price.toLocaleString()}</button>`;
+      return `<div class="row"><span>${name}</span>${action}</div>`;
+    };
+    const carRows = CAR_MODELS.map(
+      (car) => carRow(car.id, car.name, car.price) + carRow(usedKey(car.id), `${car.name}（中古）`, usedPrice(car.price)),
+    ).join('');
     this.setScreen(`
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
       <h2>ショップ・ガレージ</h2>

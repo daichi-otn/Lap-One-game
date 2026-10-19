@@ -464,15 +464,16 @@ function buyInsurance(): void {
 
 // 車種を買う (値段はコイン無限のときは 0)
 function buyCar(id: string | undefined): void {
-  const car = CAR_MODELS.find((c) => c.id === id);
-  if (!car || save.ownedCars.includes(car.id)) return;
+  if (!id) return;
+  const car = carById(id);
+  if (!CAR_MODELS.some((c) => c.id === id.split(':')[0]) || save.ownedCars.includes(id)) return;
   const price = ADMIN_ENABLED && admin.infiniteCoin ? 0 : car.price;
   if (save.coin < price) {
     ui.toast('コインが足りません');
     return;
   }
   save.coin -= price;
-  save.ownedCars.push(car.id);
+  save.ownedCars.push(id);
   storeSave(save);
   showGarage();
 }
