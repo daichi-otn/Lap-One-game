@@ -286,14 +286,24 @@ export class UI {
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
       <h2>${title}</h2>
       <div class="garage-layout">
-        <div class="garage-view" aria-label="自分の車" style="height: ${shop ? '240px' : '42vh'}"></div>
         <div class="garage-list">
           <div class="card"><h3>現在の性能 (基準 = 100%)</h3><div class="stats">${statRows}</div></div>
           ${body}
         </div>
+        <div class="garage-view" aria-label="自分の車" style="height: ${shop ? '240px' : '42vh'}">
+          <div class="view-toggle"><button class="view-btn on" data-viewmode="third">三人称</button><button class="view-btn" data-viewmode="first">一人称</button></div>
+        </div>
       </div>`);
     const host = this.screen.querySelector<HTMLElement>('.garage-view');
     if (host) this.stopViewer = startCarViewer(host, opts.color, mods, opts.engineSwap, opts.look);
+    // 一人称と三人称の切り替え (プレビューの上のボタン)
+    this.screen.querySelectorAll<HTMLElement>('[data-viewmode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const first = btn.dataset.viewmode === 'first';
+        this.stopViewer?.setView(first);
+        this.screen.querySelectorAll<HTMLElement>('[data-viewmode]').forEach((b) => b.classList.toggle('on', b === btn));
+      });
+    });
   }
 
   showSettings(settings: Settings, admin: AdminSettings): void {

@@ -88,6 +88,11 @@
       .slider { display: block; margin: 8px 0; }
       .cat-chips { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 10px; }
       .chip-btn { flex: 0 0 auto; padding: 6px 12px; border-radius: 999px; border: 1px solid #2c3e50; background: #1e2a36; color: #eef3f7; font-size: 13px; }
+      .cat-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; overflow: visible; }
+      .cat-chips .chip-btn { padding: 14px 8px; font-size: 15px; font-weight: 700; border-radius: 12px; text-align: center; }
+      .view-toggle { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 2; }
+      .view-btn { padding: 8px 14px; border-radius: 999px; border: 1px solid #2c3e50; background: rgba(16,24,32,0.7); color: #eef3f7; font-size: 14px; font-weight: 700; }
+      .view-btn.on { background: #ffb300; color: #111; border-color: #ffb300; }
       .chip-btn.on { background: #ffb300; color: #111; border-color: #ffb300; }
       .course-card { display: flex; gap: 12px; align-items: stretch; }
       .course-map { flex: 0 0 110px; display: flex; align-items: center; justify-content: center; background: #0b1620; border-radius: 10px; }

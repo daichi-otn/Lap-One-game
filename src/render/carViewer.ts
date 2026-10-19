@@ -4,6 +4,7 @@ import type { Mods } from '../game/parts';
 
 export interface CarViewer {
   stop(): void;
+  setView(first: boolean): void; // 一人称 (運転席から) か三人称 (後ろから) か
 }
 
 const OPEN_ANGLE = HOOD_OPEN_ANGLE; // ボンネットを開く角度 (rad)
@@ -38,13 +39,14 @@ export function startCarViewer(host: HTMLElement, color: number, mods: Mods, eng
   scene.add(pad);
 
   // 車のモデルは読み込みに少し時間がかかるので、読み終わってから中身を入れる
+  let firstPerson = false;
   const car = new THREE.Group();
   scene.add(car);
   void loadCarTemplate().then((template) => {
     const inst = instantiateCar(template, look);
     car.add(inst);
     car.userData = inst.userData;
-    // ガレージでは運転席の内装は見せない (一人称のときだけ)
+    // 運転席の内装は、一人称のときだけ見せる
     (inst.userData as CarParts).cockpit.visible = false;
   });
 
@@ -74,12 +76,28 @@ export function startCarViewer(host: HTMLElement, color: number, mods: Mods, eng
   const frame = (now: number) => {
     const parts = car.userData as Partial<CarParts>;
     if (parts.hinge) parts.hinge.rotation.z = -lidAngle((now - swapStart) / 1000);
+    // 一人称: 運転席から前を見る (ゲームの一人称と同じ位置)。三人称: 車を後ろから見る
+    if (parts.body) parts.body.visible = !firstPerson;
+    if (parts.cockpit) parts.cockpit.visible = firstPerson;
+    if (firstPerson) {
+      camera.fov = 72;
+      camera.position.set(0.6, 1.2, -0.2);
+      camera.lookAt(0, 1.3, 30);
+    } else {
+      camera.fov = 35;
+      camera.position.set(6.4, 3.0, 8.4);
+      camera.lookAt(0, 0.7, -0.3);
+    }
+    camera.updateProjectionMatrix();
     renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
 
   return {
+    setView: (first: boolean) => {
+      firstPerson = first;
+    },
     stop: () => {
       cancelAnimationFrame(raf);
       observer.disconnect();
