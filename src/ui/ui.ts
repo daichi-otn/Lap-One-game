@@ -26,6 +26,8 @@ export interface GarageOptions {
   color: number; // 車の色
   engineSwap: boolean; // エンジンを換えた直後 (ボンネットを開けて見せる)
   look: Record<string, number>; // 装着中のパーツの段階 (見た目)
+  mode: 'shop' | 'garage'; // ショップ (買う) かガレージ (乗り換え・装着)
+  category: string; // ショップで選んでいる分類 (空ならカテゴリーの一覧)
 }
 
 // 起動時のロゴ画面。数秒で消えるか、タップで飛ばせる
@@ -164,7 +166,8 @@ export class UI {
       <div class="coin">所持コイン <b>${save.coin.toLocaleString()}</b></div>
       <div class="menu">
         <button class="btn big race-btn" data-act="race">レースに出る</button>
-        <button class="btn big" data-act="garage">ショップ・ガレージ</button>
+        <button class="btn big" data-act="shop">ショップ</button>
+        <button class="btn big" data-act="garage">ガレージ</button>
         <button class="btn big" data-act="settings">設定</button>
       </div>
       <p class="note">${save.racesRun === 0 ? '初回レースは運営会社が車を支給します（参加費なし）' : `参加費 ${entryFee(save.racesRun).toLocaleString()} coin ／ 出走回数 ${save.racesRun}`}</p>`);
@@ -200,64 +203,89 @@ export class UI {
 
   showGarage(save: SaveData, opts: GarageOptions): void {
     const freeParts = opts.free;
+    const shop = opts.mode === 'shop'; // ショップは買うものだけ、ガレージは持っているものだけ
     const mods = mulMods(computeMods(save.equipped), carById(save.equippedCar).mods);
-    // 車種: 持っている車を乗り換えられる。買っていない車は、購入できる
     const statRows = (Object.keys(mods) as (keyof Mods)[])
       .map((k) => `<div class="stat"><span>${MOD_NAMES[k]}</span><b>${formatMod(mods[k])}</b></div>`)
       .join('');
-    const sections = SLOTS.map((slot) => {
+    const priceBtn = (act: string, arg: string, price: number, disabled: boolean) =>
+      `<button class="btn-small" data-act="${act}" data-arg="${arg}" ${disabled ? 'disabled' : ''}>購入 ${freeParts ? 0 : price.toLocaleString()}</button>`;
+    // 部品 (スロットごと)
+    const partSection = (slot: { id: string; name: string }): string => {
       const items = PARTS.filter((p) => p.slot === slot.id)
         .map((p) => {
           const owned = save.owned.includes(p.id);
-          const equipped = save.equipped[slot.id] === p.id;
+          const equipped = save.equipped[p.slot] === p.id;
+          if (shop ? owned : !owned) return '';
           let action = '';
           if (equipped) action = '<span class="tag">装着中</span>';
           else if (owned) action = `<button class="btn-small" data-act="equip" data-arg="${p.id}">装着</button>`;
-          else
-            action = `<button class="btn-small" data-act="buy" data-arg="${p.id}" ${!freeParts && save.coin < p.price ? 'disabled' : ''}>購入 ${freeParts ? 0 : p.price.toLocaleString()}</button>`;
+          else action = priceBtn('buy', p.id, p.price, !freeParts && save.coin < p.price);
           return `<div class="row"><span>${p.name}</span>${action}</div>`;
         })
         .join('');
-      return `<section><h3>${slot.name}</h3>${items}</section>`;
-    }).join('');
-    const paintRows = PAINTS.map((paint) => {
-      const owned = save.ownedPaints.includes(paint.id);
-      const equipped = save.equippedPaint === paint.id;
-      let action = '';
-      if (equipped) action = '<span class="tag">塗装中</span>';
-      else if (owned) action = `<button class="btn-small" data-act="equip-paint" data-arg="${paint.id}">塗る</button>`;
-      else action = `<button class="btn-small" data-act="buy-paint" data-arg="${paint.id}" ${!freeParts && save.coin < paint.price ? 'disabled' : ''}>購入 ${freeParts ? 0 : paint.price.toLocaleString()}</button>`;
-      return `<div class="row"><span>${paint.name}</span>${action}</div>`;
-    }).join('');
-    const insuranceRow = `<div class="row"><span>ピット保険（修理代が半額）</span>${
-      save.insurance
-        ? '<span class="tag">加入中</span>'
-        : `<button class="btn-small" data-act="buy-insurance" ${!freeParts && save.coin < PIT_INSURANCE_PRICE ? 'disabled' : ''}>購入 ${freeParts ? 0 : PIT_INSURANCE_PRICE.toLocaleString()}</button>`
-    }</div>`;
-    // 新車と中古車: 中古車は値段が安いが、耐久と性能が少し下がる
+      return `<section><h3>${slot.name}</h3>${items || '<p class="note">買うものはありません</p>'}</section>`;
+    };
+    // 車種: 新車と中古車
     const carRow = (key: string, name: string, price: number): string => {
       const owned = save.ownedCars.includes(key);
       const equipped = save.equippedCar === key;
+      if (shop ? owned : !owned) return '';
       let action = '';
       if (equipped) action = '<span class="tag">乗車中</span>';
       else if (owned) action = `<button class="btn-small" data-act="equip-car" data-arg="${key}">乗る</button>`;
-      else action = `<button class="btn-small" data-act="buy-car" data-arg="${key}" ${!freeParts && save.coin < price ? 'disabled' : ''}>購入 ${freeParts ? 0 : price.toLocaleString()}</button>`;
+      else action = priceBtn('buy-car', key, price, !freeParts && save.coin < price);
       return `<div class="row"><span>${name}</span>${action}</div>`;
     };
-    const carRows = CAR_MODELS.map(
-      (car) => carRow(car.id, car.name, car.price) + carRow(usedKey(car.id), `${car.name}（中古）`, usedPrice(car.price)),
-    ).join('');
+    const carSection = `<section><h3>車種</h3>${CAR_MODELS.map((car) => carRow(car.id, car.name, car.price) + carRow(usedKey(car.id), `${car.name}（中古）`, usedPrice(car.price))).join('')}</section>`;
+    // ボディの色
+    const paintSection = `<section><h3>ボディの色</h3>${PAINTS.map((paint) => {
+      const owned = save.ownedPaints.includes(paint.id);
+      const equipped = save.equippedPaint === paint.id;
+      if (shop ? owned : !owned) return '';
+      let action = '';
+      if (equipped) action = '<span class="tag">塗装中</span>';
+      else if (owned) action = `<button class="btn-small" data-act="equip-paint" data-arg="${paint.id}">塗る</button>`;
+      else action = priceBtn('buy-paint', paint.id, paint.price, !freeParts && save.coin < paint.price);
+      return `<div class="row"><span>${paint.name}</span>${action}</div>`;
+    }).join('')}</section>`;
+    // その他: ピット保険
+    const insuranceSection = `<section><h3>その他</h3>${
+      (shop ? !save.insurance : save.insurance)
+        ? `<div class="row"><span>ピット保険（修理代が半額）</span>${
+            save.insurance
+              ? '<span class="tag">加入中</span>'
+              : priceBtn('buy-insurance', '', PIT_INSURANCE_PRICE, !freeParts && save.coin < PIT_INSURANCE_PRICE)
+          }</div>`
+        : '<p class="note">買うものはありません</p>'
+    }</section>`;
+    // 分類ごとのまとまり (ショップではカテゴリーを選んでから、その中を見る)
+    const categories: { id: string; name: string; html: string }[] = [
+      ...SLOTS.map((slot) => ({ id: slot.id, name: slot.name, html: partSection(slot) })),
+      { id: 'car', name: '車種', html: carSection },
+      { id: 'paint', name: 'ボディの色', html: paintSection },
+      { id: 'other', name: 'その他', html: insuranceSection },
+    ];
+    let body: string;
+    let title = 'ガレージ';
+    if (!shop) {
+      body = categories.map((c) => c.html).join('');
+    } else if (!opts.category) {
+      title = 'ショップ';
+      body = `<div class="menu">${categories.map((c) => `<button class="btn" data-act="shop-cat" data-arg="${c.id}">${c.name}</button>`).join('')}</div>`;
+    } else {
+      const cat = categories.find((c) => c.id === opts.category);
+      title = `ショップ・${cat?.name ?? ''}`;
+      body = `<div class="menu"><button class="btn-small" data-act="shop-cat" data-arg="">カテゴリーへ戻る</button></div>${cat?.html ?? ''}`;
+    }
     this.setScreen(`
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
-      <h2>ショップ・ガレージ</h2>
+      <h2>${title}</h2>
       <div class="garage-layout">
         <div class="garage-view" aria-label="自分の車"></div>
         <div class="garage-list">
           <div class="card"><h3>現在の性能 (基準 = 100%)</h3><div class="stats">${statRows}</div></div>
-          <section><h3>車種</h3>${carRows}</section>
-          <section><h3>ボディの色</h3>${paintRows}</section>
-          <section><h3>その他</h3>${insuranceRow}</section>
-          ${sections}
+          ${body}
         </div>
       </div>`);
     const host = this.screen.querySelector<HTMLElement>('.garage-view');

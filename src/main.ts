@@ -141,6 +141,17 @@ function act(name: string, arg?: string): void {
       break;
     case 'garage':
       mode = 'screen';
+      garageMode = 'garage';
+      showGarage();
+      break;
+    case 'shop':
+      mode = 'screen';
+      garageMode = 'shop';
+      shopCategory = '';
+      showGarage();
+      break;
+    case 'shop-cat':
+      shopCategory = arg ?? '';
       showGarage();
       break;
     case 'settings':
@@ -283,12 +294,17 @@ function adminAct(name: string, arg?: string): void {
 
 // コイン無限のときは購入の値段を表示せず、購入ボタンも押せる
 // engineSwap: エンジンを換えた直後なら、ボンネットを開けてエンジンを見せる
+let garageMode: 'shop' | 'garage' = 'garage'; // 今開いているのがショップかガレージか
+let shopCategory = ''; // ショップで選んでいる分類
+
 function showGarage(engineSwap = false): void {
   ui.showGarage(save, {
     free: ADMIN_ENABLED && admin.infiniteCoin,
     color: PLAYER_COLOR,
     engineSwap,
     look: carLook(),
+    mode: garageMode,
+    category: shopCategory,
   });
 }
 
