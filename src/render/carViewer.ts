@@ -22,14 +22,14 @@ interface Focus {
   cockpit?: boolean; // 運転席から見せる (ハンドル・シート)
 }
 const FOCUS: Record<string, Focus> = {
-  engine: { anchor: [-0.6, 0.45, 0], dist: 3.6, fov: 42, hood: true },
-  turbo: { anchor: [-0.6, 0.3, 0.12], dist: 3.0, fov: 42, hood: true },
-  brake: { anchor: 'wheel', dist: 1.7, fov: 40, noFrontTire: true },
-  tire: { anchor: 'wheel', dist: 2.2, fov: 42, noFrontTire: true },
-  frame: { anchor: [0, 0.3, 0.2], dist: 3.4, fov: 40 },
-  chassis: { anchor: [0, 0.1, 0.4], dist: 2.6, fov: 42 },
-  window: { anchor: [0, 0.8, 0], dist: 3.2, fov: 40 },
-  muffler: { anchor: [1.0, 0.05, 0], dist: 2.7, fov: 40 },
+  engine: { anchor: [-0.6, 0.45, 0], dist: 4.5, fov: 42, hood: true },
+  turbo: { anchor: [-0.6, 0.3, 0.12], dist: 4.2, fov: 42, hood: true },
+  brake: { anchor: 'wheel', dist: 2.8, fov: 40, noFrontTire: true },
+  tire: { anchor: 'wheel', dist: 3.2, fov: 42, noFrontTire: true },
+  frame: { anchor: [0, 0.3, 0.2], dist: 5.0, fov: 40 },
+  chassis: { anchor: [0, 0.1, 0.4], dist: 4.5, fov: 42 },
+  window: { anchor: [0, 0.8, 0], dist: 4.6, fov: 40 },
+  muffler: { anchor: [1.0, 0.05, 0], dist: 4.6, fov: 40 },
   seat: { anchor: [0.4, 0.6, -0.3], dist: 0, fov: 60, cockpit: true },
   handle: { anchor: [0.4, 0.9, 0.45], dist: 0, fov: 60, cockpit: true },
 };
