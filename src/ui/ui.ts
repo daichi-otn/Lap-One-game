@@ -269,7 +269,11 @@ export class UI {
     let body: string;
     let title = 'ガレージ';
     if (!shop) {
-      body = categories.map((c) => c.html).join('');
+      // ガレージ: 上に分類の札を並べ、選んだ分類の持ち物だけを下に出す
+      const current = categories.find((c) => c.id === opts.category) ?? categories[0];
+      body = `<div class="cat-chips">${categories
+        .map((c) => `<button class="chip-btn${c.id === current.id ? ' on' : ''}" data-act="garage-cat" data-arg="${c.id}">${c.name}</button>`)
+        .join('')}</div>${current.html}`;
     } else if (!opts.category) {
       title = 'ショップ';
       body = `<div class="menu">${categories.map((c) => `<button class="btn" data-act="shop-cat" data-arg="${c.id}">${c.name}</button>`).join('')}</div>`;
@@ -282,7 +286,7 @@ export class UI {
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
       <h2>${title}</h2>
       <div class="garage-layout">
-        <div class="garage-view" aria-label="自分の車"></div>
+        <div class="garage-view" aria-label="自分の車" style="height: ${shop ? '240px' : '42vh'}"></div>
         <div class="garage-list">
           <div class="card"><h3>現在の性能 (基準 = 100%)</h3><div class="stats">${statRows}</div></div>
           ${body}

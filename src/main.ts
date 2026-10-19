@@ -154,6 +154,10 @@ function act(name: string, arg?: string): void {
       shopCategory = arg ?? '';
       showGarage();
       break;
+    case 'garage-cat':
+      garageCategory = arg ?? 'engine';
+      showGarage();
+      break;
     case 'settings':
       mode = 'screen';
       showSettings();
@@ -296,6 +300,7 @@ function adminAct(name: string, arg?: string): void {
 // engineSwap: エンジンを換えた直後なら、ボンネットを開けてエンジンを見せる
 let garageMode: 'shop' | 'garage' = 'garage'; // 今開いているのがショップかガレージか
 let shopCategory = ''; // ショップで選んでいる分類
+let garageCategory = 'engine'; // ガレージで選んでいる分類
 
 function showGarage(engineSwap = false): void {
   ui.showGarage(save, {
@@ -304,7 +309,7 @@ function showGarage(engineSwap = false): void {
     engineSwap,
     look: carLook(),
     mode: garageMode,
-    category: shopCategory,
+    category: garageMode === 'shop' ? shopCategory : garageCategory,
   });
 }
 
