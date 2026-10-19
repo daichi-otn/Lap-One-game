@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TIER_COLORS, tierColor } from './tierColors';
+import { TIER_COLORS, TIER_COLORS_MORE, tierColor } from './tierColors';
 
 // 一人称で見える運転席の内装 (ダッシュボード、ハンドル、センター画面、ドア、シート)。
 // 座標は車の前方が +Z、左右が X、高さが Y。運転席は x = -0.4 の位置 (カメラもここに置く)
@@ -160,7 +160,9 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   tilt.rotation.x = 0.15; // 運転手の方を向く (下を向かないように、傾きを小さく)
   cockpit.add(tilt);
   // リムは楕円に近いので、横を少し広くする
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.024, 12, 40), leather);
+  // 握りの色は、ハンドルの段階で変わる
+  const rimMat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.handleRim, handleTier), roughness: 0.5 });
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.024, 12, 40), rimMat);
   rim.scale.set(1, 0.9, 1);
   if (handleTier >= 2) {
     // 上位のハンドル: 上に赤いセンターマーク

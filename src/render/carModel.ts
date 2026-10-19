@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildCockpit } from './cockpit';
-import { TIER_COLORS, tierColor } from './tierColors';
+import { TIER_COLORS, TIER_COLORS_MORE, tierColor } from './tierColors';
 import { fireTexture } from './effects';
 import { PAINTS } from '../game/paints';
 
@@ -41,6 +41,8 @@ export function lookFromEquipped(equipped: Partial<Record<string, string>>): Loo
 export interface Look {
   model?: number; // 車種 (0 が標準)
   paint?: number; // ボディの色 (PAINTS の番号)
+  turbo?: number;
+  frame?: number;
   engine?: number;
   muffler?: number;
   tire?: number;
@@ -258,7 +260,7 @@ function buildExhaust(tier: number): THREE.Group {
     roughness: tier === 1 ? 0.5 : 0.2,
   });
   for (const z of [0.12, -0.12]) {
-    const tip = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.05, 20), mat);
+    const tip = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.04 + tier * 0.003, 20), mat);
     tip.rotation.z = Math.PI / 2; // 後ろ向き (x 方向)
     tip.position.set(0.93, -0.12, z);
     tip.castShadow = true;
@@ -317,7 +319,9 @@ function buildEngine(tier = 1): THREE.Group {
     add(new THREE.BoxGeometry(0.26, 0.01, 0.07), red, cx, 0.01, side * 0.1, side * 0.35 * 0.8);
   }
   // 吸気マニフォールド (中央の黒い箱)
-  add(new THREE.BoxGeometry(0.22, 0.03, 0.08), intake, cx, 0.02, 0);
+  // 吸気の大きさは段階で変わる
+  const intakeScale = 0.8 + tier * 0.06;
+  add(new THREE.BoxGeometry(0.22 * intakeScale, 0.03, 0.08 * intakeScale), intake, cx, 0.02, 0);
   // エアクリーナーの箱 (前側)
   add(new THREE.BoxGeometry(0.08, 0.04, 0.12), intake, cx - 0.2, 0.025, 0);
   // 排気管 (後ろ側の左右)
@@ -420,6 +424,32 @@ function paintedMap(src: THREE.Texture, paintNo: number): THREE.Texture {
   return tex;
 }
 
+// ターボ: エンジンの横に付く過給器 (標準は無し。段階が上がるほど大きく、色も変わる)
+function buildTurbo(tier: number): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'turbo';
+  if (tier < 2) return g;
+  const r = 0.03 + tier * 0.004;
+  const mat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.turbo, tier), metalness: 0.8, roughness: 0.35 });
+  const housing = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.12 + tier * 0.01, 16), mat);
+  housing.rotation.z = Math.PI / 2;
+  housing.position.set(-0.72, 0.02, 0.12);
+  g.add(housing);
+  return g;
+}
+
+// フレームの補強: エンジンルームの上に渡す補強バー (段階で太さと色が変わる)
+function buildBrace(tier: number): THREE.Group {
+  const g = new THREE.Group();
+  g.name = 'brace';
+  const thick = 0.012 + tier * 0.002;
+  const mat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.frame, tier), metalness: 0.85, roughness: 0.3 });
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(thick, thick, 0.7), mat);
+  bar.position.set(-0.5, 0.16, 0);
+  g.add(bar);
+  return g;
+}
+
 // 車種ごとの後付けのエアロパーツ (モデルの座標: 前が x 負、後ろが x 正、上が y 正)
 function buildAero(aero: number): THREE.Group {
   const g = new THREE.Group();
@@ -463,6 +493,8 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
   inner.add(buildExhaust(look.muffler ?? 1));
   inner.add(buildWipers(look.window ?? 1));
   inner.add(buildAero(look.model ?? 0));
+  inner.add(buildTurbo(look.turbo ?? 1));
+  inner.add(buildBrace(look.frame ?? 1));
 
   // シャシ: 上位ほど車高が低い (足回りの硬さの見た目)
   body.position.y -= ((look.chassis ?? 1) - 1) * 0.015;
@@ -521,7 +553,7 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
   if (bodyMesh) bodyMesh.geometry = bodyMesh.geometry.clone();
   // トランク (後ろの上面) と屋根 (中央の上面) を切り出す
   // 車体の面から、部品を切り出す (前が x 負、後ろが x 正、横が z)。窓は透明な色にする
-  const glassMat = new THREE.MeshStandardMaterial({ color: 0x1a2a3a, metalness: 0.9, roughness: 0.08, side: THREE.DoubleSide });
+  const glassMat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.glass, look.window ?? 1), metalness: 0.9, roughness: 0.08, side: THREE.DoubleSide });
   // 塗り: 車ごとに材料を複製して、選んだ色を掛け合わせる
   const paintBase = (bodyMesh?.material as THREE.MeshStandardMaterial | undefined) ?? new THREE.MeshStandardMaterial({ color: 0x1f3f7a });
   const paintMat = paintBase.clone();
