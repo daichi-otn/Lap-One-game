@@ -8,6 +8,9 @@ export interface SaveData {
   bestTime: Record<string, number>;
   ownedCars: string[]; // 持っている車種
   equippedCar: string; // 乗っている車種
+  ownedPaints: string[]; // 持っているボディの色
+  equippedPaint: string; // 塗ってある色
+  insurance: boolean; // ピットの修理代が半分になる保険
 }
 
 export type Quality = 'low' | 'medium' | 'high';
@@ -84,6 +87,9 @@ export function newSave(): SaveData {
     bestTime: {},
     ownedCars: ['standard'],
     equippedCar: 'standard',
+    ownedPaints: ['blue'],
+    equippedPaint: 'blue',
+    insurance: false,
   };
 }
 

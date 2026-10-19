@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildCockpit } from './cockpit';
 import { TIER_COLORS, tierColor } from './tierColors';
 import { fireTexture } from './effects';
+import { PAINTS } from '../game/paints';
 
 // 車のモデル: "Midnight Blue Sports Car" by Nathan Kiplinger (CC0, SummerEngine) を使う
 // 前方は +Z。ボンネットは蝶番の周りで開き、タイヤは車体と別に回る
@@ -39,6 +40,7 @@ export function lookFromEquipped(equipped: Partial<Record<string, string>>): Loo
 // 装着中のパーツ (id 例: "engine-2") から、見た目の段階を作る (下の型)
 export interface Look {
   model?: number; // 車種 (0 が標準)
+  paint?: number; // ボディの色 (PAINTS の番号)
   engine?: number;
   muffler?: number;
   tire?: number;
@@ -377,6 +379,47 @@ export function loadCarTemplate(): Promise<Template> {
 // 回るタイヤの部品を、段階の組み合わせごとに 1 つだけ作っておく
 const spinnerCache = new Map<string, THREE.Group>();
 
+// 模様 (車体の絵) の色相を回して、別の色に塗り替えた絵を作る。同じ色は一度だけ作って使い回す
+const paintedMaps = new Map<string, THREE.Texture>();
+function paintedMap(src: THREE.Texture, paintNo: number): THREE.Texture {
+  const key = `${src.uuid}-${paintNo}`;
+  const cached = paintedMaps.get(key);
+  if (cached) return cached;
+  const paint = PAINTS[paintNo];
+  const image = src.image as CanvasImageSource & { width: number; height: number };
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return src;
+  ctx.drawImage(image, 0, 0);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  // CSS の hue-rotate と同じ行列で、色相を回す
+  const a = (paint.hue * Math.PI) / 180;
+  const c = Math.cos(a);
+  const sn = Math.sin(a);
+  const m = [
+    0.213 + c * 0.787 - sn * 0.213, 0.715 - c * 0.715 - sn * 0.715, 0.072 - c * 0.072 + sn * 0.928,
+    0.213 - c * 0.213 + sn * 0.143, 0.715 + c * 0.285 + sn * 0.14, 0.072 - c * 0.072 - sn * 0.283,
+    0.213 - c * 0.213 - sn * 0.787, 0.715 - c * 0.715 + sn * 0.715, 0.072 + c * 0.928 + sn * 0.072,
+  ];
+  const px = data.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i];
+    const g = px[i + 1];
+    const b = px[i + 2];
+    px[i] = Math.min(255, Math.max(0, (m[0] * r + m[1] * g + m[2] * b) * paint.dark));
+    px[i + 1] = Math.min(255, Math.max(0, (m[3] * r + m[4] * g + m[5] * b) * paint.dark));
+    px[i + 2] = Math.min(255, Math.max(0, (m[6] * r + m[7] * g + m[8] * b) * paint.dark));
+  }
+  ctx.putImageData(data, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.flipY = src.flipY;
+  tex.colorSpace = src.colorSpace;
+  paintedMaps.set(key, tex);
+  return tex;
+}
+
 // 車種ごとの後付けのエアロパーツ (モデルの座標: 前が x 負、後ろが x 正、上が y 正)
 function buildAero(aero: number): THREE.Group {
   const g = new THREE.Group();
@@ -479,7 +522,10 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
   // トランク (後ろの上面) と屋根 (中央の上面) を切り出す
   // 車体の面から、部品を切り出す (前が x 負、後ろが x 正、横が z)。窓は透明な色にする
   const glassMat = new THREE.MeshStandardMaterial({ color: 0x1a2a3a, metalness: 0.9, roughness: 0.08, side: THREE.DoubleSide });
-  const paintMat = (bodyMesh?.material as THREE.Material) ?? new THREE.MeshStandardMaterial({ color: 0x1f3f7a });
+  // 塗り: 車ごとに材料を複製して、選んだ色を掛け合わせる
+  const paintBase = (bodyMesh?.material as THREE.MeshStandardMaterial | undefined) ?? new THREE.MeshStandardMaterial({ color: 0x1f3f7a });
+  const paintMat = paintBase.clone();
+  if (look.paint !== undefined && look.paint > 0 && paintBase.map) paintMat.map = paintedMap(paintBase.map, look.paint);
   const det: NonNullable<CarParts['detachable']> = {};
   if (bodyMesh) {
     det.windshield = takeTriangles(bodyMesh, (x, y, z) => x > -0.36 && x < -0.1 && y > 0.13 && Math.abs(z) < 0.3);
@@ -490,6 +536,8 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
     det.doorLeft = takeTriangles(bodyMesh, (x, y, z) => x > -0.3 && x < 0.4 && y > 0.15 && y < 0.95 && z < -0.6);
     if (det.windshield) det.windshield.material = glassMat;
     if (det.rearWindow) det.rearWindow.material = glassMat;
+    // 車体の本体も、選んだ色で塗る
+    if (bodyMesh) bodyMesh.material = paintMat;
     for (const m of [det.windshield, det.roof, det.rearWindow, det.trunk, det.doorRight, det.doorLeft]) {
       if (m) {
         if (m !== det.windshield && m !== det.rearWindow) m.material = paintMat;

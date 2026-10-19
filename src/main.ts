@@ -8,6 +8,7 @@ import { WEATHER, pickWeather, type Weather } from './game/weather';
 import { NEUTRAL_MODS, PARTS, computeMods, type Mods } from './game/parts';
 import { entryFee, payout } from './game/economy';
 import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
+import { PAINTS, paintIndex, PIT_INSURANCE_PRICE } from './game/paints';
 import {
   ADMIN_ENABLED,
   loadAdmin,
@@ -177,6 +178,15 @@ function act(name: string, arg?: string): void {
       if (c) startRace(c);
       break;
     }
+    case 'buy-paint':
+      buyPaint(arg);
+      break;
+    case 'equip-paint':
+      equipPaint(arg);
+      break;
+    case 'buy-insurance':
+      buyInsurance();
+      break;
     case 'buy-car':
       buyCar(arg);
       break;
@@ -413,7 +423,43 @@ function finishRace(): void {
 
 // 車種の見た目 (装着中のパーツの段階 + 車種)
 function carLook(): Look & Record<string, number> {
-  return { ...lookFromEquipped(save.equipped), model: carIndex(save.equippedCar) };
+  return { ...lookFromEquipped(save.equipped), model: carIndex(save.equippedCar), paint: paintIndex(save.equippedPaint) };
+}
+
+// ボディの色を買う / 塗り替える
+function buyPaint(id: string | undefined): void {
+  const paint = PAINTS.find((p) => p.id === id);
+  if (!paint || save.ownedPaints.includes(paint.id)) return;
+  const price = ADMIN_ENABLED && admin.infiniteCoin ? 0 : paint.price;
+  if (save.coin < price) {
+    ui.toast('コインが足りません');
+    return;
+  }
+  save.coin -= price;
+  save.ownedPaints.push(paint.id);
+  storeSave(save);
+  showGarage();
+}
+
+function equipPaint(id: string | undefined): void {
+  if (!id || !save.ownedPaints.includes(id)) return;
+  save.equippedPaint = id;
+  storeSave(save);
+  showGarage();
+}
+
+// ピットの保険を買う (一度買えば、ずっと有効)
+function buyInsurance(): void {
+  if (save.insurance) return;
+  const price = ADMIN_ENABLED && admin.infiniteCoin ? 0 : PIT_INSURANCE_PRICE;
+  if (save.coin < price) {
+    ui.toast('コインが足りません');
+    return;
+  }
+  save.coin -= price;
+  save.insurance = true;
+  storeSave(save);
+  showGarage();
 }
 
 // 車種を買う (値段はコイン無限のときは 0)
@@ -485,7 +531,8 @@ createFixedStepLoop(
         lastPitStops = race.pitStops;
         // 修理代とニトロの補充は、持っているコインから払う (足りなければ残りだけ)
         const bill = race.lastPitBill;
-        const cost = Math.round(bill.damage * PIT_REPAIR_MAX + bill.nitro * PIT_NITRO_PER_PERCENT);
+        const discount = save.insurance ? 0.5 : 1; // 保険があれば半額
+        const cost = Math.round((bill.damage * PIT_REPAIR_MAX + bill.nitro * PIT_NITRO_PER_PERCENT) * discount);
         const paid = Math.min(save.coin, cost);
         save.coin -= paid;
         storeSave(save);

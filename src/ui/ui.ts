@@ -2,6 +2,7 @@ import { COURSES, type Course } from '../game/courses';
 import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { CAR_MODELS, carById, mulMods } from '../game/cars';
+import { PAINTS, PIT_INSURANCE_PRICE } from '../game/paints';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
 import { REDLINE_RPM, REDLINE_STALL_SECONDS } from '../game/car';
 import type { Race } from '../game/race';
@@ -219,6 +220,20 @@ export class UI {
         .join('');
       return `<section><h3>${slot.name}</h3>${items}</section>`;
     }).join('');
+    const paintRows = PAINTS.map((paint) => {
+      const owned = save.ownedPaints.includes(paint.id);
+      const equipped = save.equippedPaint === paint.id;
+      let action = '';
+      if (equipped) action = '<span class="tag">塗装中</span>';
+      else if (owned) action = `<button class="btn-small" data-act="equip-paint" data-arg="${paint.id}">塗る</button>`;
+      else action = `<button class="btn-small" data-act="buy-paint" data-arg="${paint.id}" ${!freeParts && save.coin < paint.price ? 'disabled' : ''}>購入 ${freeParts ? 0 : paint.price.toLocaleString()}</button>`;
+      return `<div class="row"><span>${paint.name}</span>${action}</div>`;
+    }).join('');
+    const insuranceRow = `<div class="row"><span>ピット保険（修理代が半額）</span>${
+      save.insurance
+        ? '<span class="tag">加入中</span>'
+        : `<button class="btn-small" data-act="buy-insurance" ${!freeParts && save.coin < PIT_INSURANCE_PRICE ? 'disabled' : ''}>購入 ${freeParts ? 0 : PIT_INSURANCE_PRICE.toLocaleString()}</button>`
+    }</div>`;
     const carRows = CAR_MODELS.map((car) => {
       const owned = save.ownedCars.includes(car.id);
       const equipped = save.equippedCar === car.id;
@@ -236,6 +251,8 @@ export class UI {
         <div class="garage-list">
           <div class="card"><h3>現在の性能 (基準 = 100%)</h3><div class="stats">${statRows}</div></div>
           <section><h3>車種</h3>${carRows}</section>
+          <section><h3>ボディの色</h3>${paintRows}</section>
+          <section><h3>その他</h3>${insuranceRow}</section>
           ${sections}
         </div>
       </div>`);
