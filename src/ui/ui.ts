@@ -295,7 +295,8 @@ export class UI {
         </div>
       </div>`);
     const host = this.screen.querySelector<HTMLElement>('.garage-view');
-    if (host) this.stopViewer = startCarViewer(host, opts.color, mods, opts.engineSwap, opts.look);
+    // ガレージでは、選んでいる分類の部品に近づいて見せる
+    if (host) this.stopViewer = startCarViewer(host, opts.color, mods, opts.engineSwap, opts.look, shop ? '' : opts.category);
     // 一人称と三人称の切り替え (プレビューの上のボタン)
     this.screen.querySelectorAll<HTMLElement>('[data-viewmode]').forEach((btn) => {
       btn.addEventListener('click', () => {
