@@ -17,21 +17,22 @@ interface Focus {
   anchor: [number, number, number] | 'wheel'; // 'wheel' は前のタイヤ (読み込み後に決まる)
   dist: number;
   fov: number;
+  from: [number, number, number]; // 部品を見る方向 (車から見て。前は x 負、後ろは x 正、横は z)
   hood?: boolean; // ボンネットを開ける (エンジン・ターボ)
   noFrontTire?: boolean; // 前のタイヤを外す (ブレーキ・タイヤ)
   cockpit?: boolean; // 運転席から見せる (ハンドル・シート)
 }
 const FOCUS: Record<string, Focus> = {
-  engine: { anchor: [-0.6, 0.45, 0], dist: 4.5, fov: 42, hood: true },
-  turbo: { anchor: [-0.6, 0.3, 0.12], dist: 4.2, fov: 42, hood: true },
-  brake: { anchor: 'wheel', dist: 2.8, fov: 40, noFrontTire: true },
-  tire: { anchor: 'wheel', dist: 3.2, fov: 42, noFrontTire: true },
-  frame: { anchor: [0, 0.3, 0.2], dist: 5.0, fov: 40 },
-  chassis: { anchor: [0, 0.1, 0.4], dist: 4.5, fov: 42 },
-  window: { anchor: [0, 0.8, 0], dist: 4.6, fov: 40 },
-  muffler: { anchor: [1.0, 0.05, 0], dist: 4.6, fov: 40 },
-  seat: { anchor: [0.4, 0.6, -0.3], dist: 0, fov: 60, cockpit: true },
-  handle: { anchor: [0.4, 0.9, 0.45], dist: 0, fov: 60, cockpit: true },
+  engine: { anchor: [-0.6, 0.45, 0], dist: 4.5, fov: 42, hood: true, from: [-1, 0.2, 0] },
+  turbo: { anchor: [-0.6, 0.3, 0.12], dist: 4.2, fov: 42, hood: true, from: [-1, 0.2, 0.4] },
+  brake: { anchor: 'wheel', dist: 2.8, fov: 40, noFrontTire: true, from: [-1, 0, 1] },
+  tire: { anchor: 'wheel', dist: 3.2, fov: 42, noFrontTire: true, from: [-1, 0, 1] },
+  frame: { anchor: [0, 0.3, 0.2], dist: 5.0, fov: 40, from: [0, 0.2, 1] },
+  chassis: { anchor: [0, 0.1, 0.4], dist: 4.5, fov: 42, from: [0, 0.1, 1] },
+  window: { anchor: [0, 0.8, 0], dist: 4.6, fov: 40, from: [0, 0.2, 1] },
+  muffler: { anchor: [1.0, 0.05, 0], dist: 4.6, fov: 40, from: [1, 0.1, 0] },
+  seat: { anchor: [0.4, 0.6, -0.3], dist: 0, fov: 60, cockpit: true, from: [0, 0, 1] },
+  handle: { anchor: [0.4, 0.9, 0.45], dist: 0, fov: 60, cockpit: true, from: [0, 0, 1] },
 };
 // 部品を見るカメラの方向 (車の斜め前、少し上)
 const VIEW_DIR = new THREE.Vector3(1, 0.35, 1).normalize();
@@ -101,8 +102,9 @@ export function startCarViewer(
     if (hasAnchor && target && !target.cockpit) {
       let best = 0;
       let bestScore = -Infinity;
+      const fromDir = new THREE.Vector3(...target.from).normalize();
       for (let a = 0; a < Math.PI * 2; a += 0.02) {
-        const r = anchor.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
+        const r = fromDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
         const score = new THREE.Vector3(r.x, 0, r.z).normalize().dot(new THREE.Vector3(VIEW_DIR.x, 0, VIEW_DIR.z).normalize());
         if (score > bestScore) {
           bestScore = score;
