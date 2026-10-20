@@ -71,6 +71,8 @@ export interface Settings {
   view: FirstPersonView;
   wheel: WheelOffset;
   autoDrive: boolean; // ハンドルだけ操作し、アクセルとブレーキは自動
+  cpuCount: number; // レースに出る CPU の台数
+  cpuStrength: number; // CPU の強さ (1 が標準)
 }
 
 const SAVE_KEY = 'lapone.save.v1';
@@ -113,7 +115,7 @@ export function storeSave(save: SaveData): void {
 }
 
 export function loadSettings(): Settings {
-  const base: Settings = { quality: 'medium', sound: true, gyro: false, view: { ...DEFAULT_VIEW }, wheel: { ...DEFAULT_WHEEL }, autoDrive: false };
+  const base: Settings = { quality: 'medium', sound: true, gyro: false, view: { ...DEFAULT_VIEW }, wheel: { ...DEFAULT_WHEEL }, autoDrive: false, cpuCount: 7, cpuStrength: 1 };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {

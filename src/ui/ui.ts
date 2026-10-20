@@ -355,6 +355,14 @@ export class UI {
         <div class="menu">${switchRow('sound-toggle', '効果音・エンジン音', settings.sound)}</div>
       </div>
       <div class="card">
+        <p>レースの相手 (CPU)</p>
+        <p class="note">次のレースから反映されます。</p>
+        <p>台数</p>
+        <div class="menu">${[0, 3, 5, 7].map((n) => `<button class="btn ${settings.cpuCount === n ? 'active' : ''}" data-act="cpu-count" data-arg="${n}">${n}台</button>`).join('')}</div>
+        <p>強さ</p>
+        <div class="menu">${[0.5, 1, 1.5, 2].map((v) => `<button class="btn ${settings.cpuStrength === v ? 'active' : ''}" data-act="cpu-strength" data-arg="${v}">×${v}</button>`).join('')}</div>
+      </div>
+      <div class="card">
         <p>運転の補助</p>
         <div class="menu">${switchRow('auto-toggle', 'ハンドルだけ操作', settings.autoDrive)}</div>
         <p class="note">ONにすると、アクセルとブレーキはコースに合わせて自動になります。ハンドルだけ操作します。</p>

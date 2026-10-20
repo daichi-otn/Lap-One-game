@@ -102,7 +102,7 @@ let firstPerson = false;
 let mode: 'screen' | 'race' | 'result' | 'preview' = 'screen';
 let previewRace: Race | null = null; // 設定の後ろで見せる一人称の画面 (走らせない)
 // 設定に関係する操作は、プレビューを続ける
-const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'auto-toggle', 'view-reset', 'wheel-reset']);
+const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'auto-toggle', 'view-reset', 'wheel-reset', 'cpu-count', 'cpu-strength']);
 
 const input = new Input(() => (firstPerson = !firstPerson));
 // 前回ジャイロを使っていたら、開始を試す (iOS は許可が要るので失敗しても止めない)
@@ -179,6 +179,16 @@ function act(name: string, arg?: string): void {
       break;
     case 'auto-toggle':
       settings = { ...settings, autoDrive: !settings.autoDrive };
+      storeSettings(settings);
+      showSettings();
+      break;
+    case 'cpu-count':
+      settings = { ...settings, cpuCount: Number(arg) };
+      storeSettings(settings);
+      showSettings();
+      break;
+    case 'cpu-strength':
+      settings = { ...settings, cpuStrength: Number(arg) };
       storeSettings(settings);
       showSettings();
       break;
@@ -374,7 +384,8 @@ function startRace(c: Course): void {
   weather = dev && admin.weather !== 'auto' ? admin.weather : pickWeather(c.weather);
   const playerMods = mulMods(computeMods(save.equipped), carById(save.equippedCar).mods);
   const track = buildTrack(c);
-  const cpuCount = dev ? admin.cpuCount : CPU_COUNT;
+  // 開発者モードの値があればそれを使う。通常は設定の値 (公開版でも変えられる)
+  const cpuCount = dev ? admin.cpuCount : settings.cpuCount;
   race = new Race({
     track,
     weather,
@@ -382,7 +393,7 @@ function startRace(c: Course): void {
     playerLook: carLook(),
     autoDrive: settings.autoDrive,
     aiMods: makeAiMods(cpuCount),
-    aiStrength: dev ? admin.cpuStrength : 1,
+    aiStrength: dev ? admin.cpuStrength : settings.cpuStrength,
   });
 
   world.setTrack(track);
@@ -402,9 +413,6 @@ function startRace(c: Course): void {
 }
 
 // CPU は少しずつ速さにばらつきを持たせる
-// CPU の数 (通常のレース)
-const CPU_COUNT = 7;
-
 // CPU の車: 標準のプレイヤーの車より少し性能が高い
 function makeAiMods(count: number): Mods[] {
   return Array.from({ length: count }, () => ({
