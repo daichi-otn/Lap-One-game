@@ -24,7 +24,7 @@ interface Focus {
 const FOCUS: Record<string, Focus> = {
   engine: { cam: [0.2, 1.5, 4.2], look: [0, 0.7, 0.9], fov: 40, hood: true },
   turbo: { cam: [2.2, 1.3, 1.9], look: [0, 0.8, 0.9], fov: 40, hood: true },
-  brake: { cam: [2.8, 0.9, 3.2], look: [0.83, 0.42, 1.53], fov: 38, noFrontTire: true },
+  brake: { cam: [1.6, 0.7, 3.0], look: [0.83, 0.42, 1.45], fov: 38, noFrontTire: true },
   tire: { cam: [2.8, 0.9, 3.2], look: [0.83, 0.42, 1.53], fov: 40, noFrontTire: true },
   frame: { cam: [4.5, 0.8, 0], look: [0, 0.6, 0], fov: 40 },
   chassis: { cam: [4.5, 0.3, 0], look: [0, 0.2, 0], fov: 42 },
