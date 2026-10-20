@@ -137,7 +137,7 @@ function act(name: string, arg?: string): void {
     case 'race':
     case 'retry':
       mode = 'screen';
-      ui.showCourses(save);
+      ui.showCourses(save, courseFilter);
       break;
     case 'garage':
       mode = 'screen';
@@ -153,6 +153,10 @@ function act(name: string, arg?: string): void {
     case 'shop-cat':
       shopCategory = arg ?? '';
       showGarage();
+      break;
+    case 'course-filter':
+      courseFilter = arg ?? '';
+      ui.showCourses(save, courseFilter);
       break;
     case 'garage-cat':
       garageCategory = arg ?? 'engine';
@@ -311,6 +315,7 @@ function adminAct(name: string, arg?: string): void {
 let garageMode: 'shop' | 'garage' = 'garage'; // 今開いているのがショップかガレージか
 let shopCategory = ''; // ショップで選んでいる分類
 let garageCategory = 'engine'; // ガレージで選んでいる分類
+let courseFilter = ''; // コース選択で選んでいる難易度 (空なら全部)
 
 function showGarage(engineSwap = false): void {
   ui.showGarage(save, {

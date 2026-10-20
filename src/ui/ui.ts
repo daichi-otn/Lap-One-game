@@ -174,8 +174,14 @@ export class UI {
     this.screen.classList.add('title-photo');
   }
 
-  showCourses(save: SaveData): void {
-    const cards = COURSES.map(
+  // filter: 難易度で絞る (空なら全部)。上の札で切り替える
+  showCourses(save: SaveData, filter = ''): void {
+    const levels = ['初級', '中級', '上級'];
+    const shown = COURSES.filter((c) => !filter || c.difficulty === filter);
+    const chips = ['', ...levels]
+      .map((lv) => `<button class="chip-btn${lv === filter ? ' on' : ''}" data-act="course-filter" data-arg="${lv}">${lv || 'すべて'}</button>`)
+      .join('');
+    const cards = shown.map(
       (c: Course) => {
         const fee = c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun);
         return `
@@ -197,6 +203,7 @@ export class UI {
     this.setScreen(`
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
       <h2>コースを選ぶ</h2>
+      <div class="cat-chips level-chips">${chips}</div>
       ${cards}
       ${anyAffordable ? '' : '<p class="warn">コインが足りないため出走できません</p>'}`);
   }
@@ -335,7 +342,7 @@ export class UI {
       : '';
     this.setScreen(`
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button></div>
-      <h2>グラフィック</h2>
+      <h2>設定</h2>
       <div class="card">
         <p>一人称の視点</p>
         <p class="note">設定の後ろで、一人称の見え方がすぐ変わります。</p>
