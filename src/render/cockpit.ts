@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TIER_COLORS, TIER_COLORS_MORE, tierColor } from './tierColors';
+import { GRIPS } from '../game/trims';
 
 // 一人称で見える運転席の内装 (ダッシュボード、ハンドル、センター画面、ドア、シート)。
 // 座標は車の前方が +Z、左右が X、高さが Y。運転席は x = -0.4 の位置 (カメラもここに置く)
@@ -66,9 +67,10 @@ function leatherGrain(): THREE.CanvasTexture {
 }
 
 // 運転席の内装。seat / handle は装着中のパーツの段階 (1 が標準、2 と 3 が上位)
-export function buildCockpit(look: { seat?: number; handle?: number } = {}): THREE.Group {
+export function buildCockpit(look: { seat?: number; handle?: number; grip?: number } = {}): THREE.Group {
   const seatTier = look.seat ?? 1;
   const handleTier = look.handle ?? 1;
+  const gripColor = look.grip !== undefined ? GRIPS[look.grip]?.color : undefined;
   const cockpit = new THREE.Group();
 
   // 素材: 黒のソフトレザー、ダッシュの樹脂、アルミのアクセント、発光する表示
@@ -161,7 +163,7 @@ export function buildCockpit(look: { seat?: number; handle?: number } = {}): THR
   cockpit.add(tilt);
   // リムは楕円に近いので、横を少し広くする
   // 握りの色は、ハンドルの段階で変わる
-  const rimMat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.handleRim, handleTier), roughness: 0.5 });
+  const rimMat = new THREE.MeshStandardMaterial({ color: gripColor ?? tierColor(TIER_COLORS_MORE.handleRim, handleTier), roughness: 0.5 });
   const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.024, 12, 40), rimMat);
   rim.scale.set(1, 0.9, 1);
   if (handleTier >= 2) {

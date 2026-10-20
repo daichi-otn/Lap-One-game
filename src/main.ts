@@ -9,6 +9,7 @@ import { NEUTRAL_MODS, PARTS, computeMods, type Mods } from './game/parts';
 import { entryFee, payout } from './game/economy';
 import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
 import { PAINTS, paintIndex, PIT_INSURANCE_PRICE } from './game/paints';
+import { GRIPS, RIMS, trimIndex } from './game/trims';
 import {
   ADMIN_ENABLED,
   loadAdmin,
@@ -207,6 +208,18 @@ function act(name: string, arg?: string): void {
       if (c) startRace(c);
       break;
     }
+    case 'buy-rim':
+      buyTrim(RIMS, 'ownedRims', arg);
+      break;
+    case 'equip-rim':
+      equipTrim('ownedRims', 'equippedRim', arg);
+      break;
+    case 'buy-grip':
+      buyTrim(GRIPS, 'ownedGrips', arg);
+      break;
+    case 'equip-grip':
+      equipTrim('ownedGrips', 'equippedGrip', arg);
+      break;
     case 'buy-paint':
       buyPaint(arg);
       break;
@@ -457,7 +470,36 @@ function finishRace(): void {
 
 // 車種の見た目 (装着中のパーツの段階 + 車種)
 function carLook(): Look & Record<string, number> {
-  return { ...lookFromEquipped(save.equipped), model: carIndex(save.equippedCar), paint: paintIndex(save.equippedPaint) };
+  return {
+    ...lookFromEquipped(save.equipped),
+    model: carIndex(save.equippedCar),
+    paint: paintIndex(save.equippedPaint),
+    rim: trimIndex(RIMS, save.equippedRim),
+    grip: trimIndex(GRIPS, save.equippedGrip),
+  };
+}
+
+// ホイールの色・ハンドルの握りの色を買う / 付け替える
+type TrimKey = 'ownedRims' | 'ownedGrips';
+function buyTrim(list: { id: string; price: number }[], key: TrimKey, id: string | undefined): void {
+  const item = list.find((t) => t.id === id);
+  if (!item || save[key].includes(item.id)) return;
+  const price = ADMIN_ENABLED && admin.infiniteCoin ? 0 : item.price;
+  if (save.coin < price) {
+    ui.toast('コインが足りません');
+    return;
+  }
+  save.coin -= price;
+  save[key].push(item.id);
+  storeSave(save);
+  showGarage();
+}
+
+function equipTrim(ownedKey: TrimKey, equippedKey: 'equippedRim' | 'equippedGrip', id: string | undefined): void {
+  if (!id || !save[ownedKey].includes(id)) return;
+  save[equippedKey] = id;
+  storeSave(save);
+  showGarage();
 }
 
 // ボディの色を買う / 塗り替える

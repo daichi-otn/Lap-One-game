@@ -11,6 +11,10 @@ export interface SaveData {
   ownedPaints: string[]; // 持っているボディの色
   equippedPaint: string; // 塗ってある色
   insurance: boolean; // ピットの修理代が半分になる保険
+  ownedRims: string[]; // 持っているホイールの色
+  equippedRim: string;
+  ownedGrips: string[]; // 持っているハンドルの握りの色
+  equippedGrip: string;
 }
 
 export type Quality = 'low' | 'medium' | 'high';
@@ -92,6 +96,10 @@ export function newSave(): SaveData {
     ownedPaints: ['blue'],
     equippedPaint: 'blue',
     insurance: false,
+    ownedRims: ['rim-0'],
+    equippedRim: 'rim-0',
+    ownedGrips: ['grip-0'],
+    equippedGrip: 'grip-0',
   };
 }
 

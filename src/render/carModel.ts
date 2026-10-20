@@ -4,6 +4,7 @@ import { buildCockpit } from './cockpit';
 import { TIER_COLORS, TIER_COLORS_MORE, tierColor } from './tierColors';
 import { fireTexture } from './effects';
 import { PAINTS } from '../game/paints';
+import { GRIPS, RIMS } from '../game/trims';
 
 // 車のモデル: "Midnight Blue Sports Car" by Nathan Kiplinger (CC0, SummerEngine) を使う
 // 前方は +Z。ボンネットは蝶番の周りで開き、タイヤは車体と別に回る
@@ -41,6 +42,8 @@ export function lookFromEquipped(equipped: Partial<Record<string, string>>): Loo
 export interface Look {
   model?: number; // 車種 (0 が標準)
   paint?: number; // ボディの色 (PAINTS の番号)
+  rim?: number; // ホイールの色 (RIMS の番号)
+  grip?: number; // ハンドルの握りの色 (GRIPS の番号)
   turbo?: number;
   frame?: number;
   engine?: number;
@@ -169,7 +172,7 @@ export function splitBodyMesh(mesh: THREE.Mesh): { body: THREE.BufferGeometry; h
 }
 
 // 回るタイヤ: 断面つきのタイヤ、テーパーのあるスポーク、ブレーキディスク、キャリパー
-function buildSpinner(look: Look = {}): THREE.Group {
+function buildSpinner(look: Look = {}, rimColor?: number): THREE.Group {
   const tireTier = look.tire ?? 1;
   const brakeTier = look.brake ?? 1;
   const R = WHEEL_R;
@@ -191,7 +194,7 @@ function buildSpinner(look: Look = {}): THREE.Group {
   spinner.add(tire);
 
   const alloy = new THREE.MeshPhysicalMaterial({
-    color: tierColor(TIER_COLORS.rim, tireTier),
+    color: rimColor ?? tierColor(TIER_COLORS.rim, tireTier),
     metalness: 0.95,
     roughness: tireTier >= 6 ? 0.12 : 0.22,
     clearcoat: 0.4,
@@ -417,6 +420,8 @@ function paintedMap(src: THREE.Texture, paintNo: number): THREE.Texture {
     px[i + 2] = Math.min(255, Math.max(0, (m[6] * r + m[7] * g + m[8] * b) * paint.dark));
   }
   ctx.putImageData(data, 0, 0);
+  // 模様: ストライプ・チェッカー・フレイムを、ベースの色の上に重ねる (車体の絵の上で、模様が出る)
+  if (paint.pattern) drawPattern(ctx, canvas.width, canvas.height, paint.pattern, paint.accent ?? 0xffffff);
   const tex = new THREE.CanvasTexture(canvas);
   tex.flipY = src.flipY;
   tex.colorSpace = src.colorSpace;
@@ -448,6 +453,47 @@ function buildBrace(tier: number): THREE.Group {
   bar.position.set(-0.5, 0.16, 0);
   g.add(bar);
   return g;
+}
+
+// 模様を描く (色は 16 進数)
+function drawPattern(ctx: CanvasRenderingContext2D, w: number, h: number, kind: 'stripe' | 'checker' | 'flame', color: number): void {
+  const hex = `#${color.toString(16).padStart(6, '0')}`;
+  ctx.save();
+  ctx.fillStyle = hex;
+  ctx.strokeStyle = hex;
+  if (kind === 'stripe') {
+    // 斜めの帯を二本
+    for (const x of [w * 0.3, w * 0.55]) {
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + w * 0.09, 0);
+      ctx.lineTo(x + w * 0.09 - h * 0.25, h);
+      ctx.lineTo(x - h * 0.25, h);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (kind === 'checker') {
+    const n = 16;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if ((i + j) % 2 === 0) ctx.fillRect((i * w) / n, (j * h) / n, w / n, h / n);
+      }
+    }
+    ctx.globalAlpha = 0.85;
+  } else {
+    // 炎: 下から立ち上がる細長い山
+    ctx.globalAlpha = 0.8;
+    for (let k = 0; k < 9; k++) {
+      const x = (k / 9) * w;
+      ctx.beginPath();
+      ctx.moveTo(x, h);
+      ctx.quadraticCurveTo(x + w / 18, h * 0.55, x + w / 9, h);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 // 車種ごとの後付けのエアロパーツ (モデルの座標: 前が x 負、後ろが x 正、上が y 正)
@@ -506,10 +552,12 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
     holder.name = 'wheel';
     holder.position.set(w.x, WHEEL_Y, Math.sign(w.z) * WHEEL_OUT_Z);
     const key = `${look.tire ?? 1}-${look.brake ?? 1}`;
-    let proto = spinnerCache.get(key);
+    const rimHex = look.rim !== undefined ? RIMS[look.rim]?.color : undefined;
+    const cacheKey = `${key}-${look.rim ?? 0}`;
+    let proto = spinnerCache.get(cacheKey);
     if (!proto) {
-      proto = buildSpinner({ tire: look.tire, brake: look.brake });
-      spinnerCache.set(key, proto);
+      proto = buildSpinner({ tire: look.tire, brake: look.brake }, rimHex);
+      spinnerCache.set(cacheKey, proto);
     }
     const spinner = proto.clone(); // 形と材質は共有する
     spinner.name = 'spinner';
@@ -541,7 +589,7 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
     flames.push(flame);
   }
 
-  const cockpit = buildCockpit({ seat: look.seat, handle: look.handle });
+  const cockpit = buildCockpit({ seat: look.seat, handle: look.handle, grip: look.grip });
   group.add(cockpit);
   const hinge = body.getObjectByName('hood-hinge') ?? new THREE.Object3D();
   // 車体の面は車ごとに複製して、ぶつかった場所をへこませられるようにする

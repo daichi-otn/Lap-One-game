@@ -3,6 +3,7 @@ import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { CAR_MODELS, carById, mulMods, usedKey, usedPrice } from '../game/cars';
 import { PAINTS, PIT_INSURANCE_PRICE } from '../game/paints';
+import { GRIPS, RIMS } from '../game/trims';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
 import { REDLINE_RPM, REDLINE_STALL_SECONDS } from '../game/car';
 import type { Race } from '../game/race';
@@ -261,6 +262,21 @@ export class UI {
       else action = priceBtn('buy-paint', paint.id, paint.price, !freeParts && save.coin < paint.price);
       return `<div class="row"><span>${paint.name}</span>${action}</div>`;
     }).join('')}</section>`;
+    // ホイールの色・ハンドルの握りの色
+    const trimSection = (title: string, list: { id: string; name: string; price: number }[], owned: string[], equipped: string, buyAct: string, equipAct: string, verb: string): string =>
+      `<section><h3>${title}</h3>${list
+        .map((t) => {
+          const has = owned.includes(t.id);
+          if (shop ? has : !has) return '';
+          let action = '';
+          if (equipped === t.id) action = '<span class="tag">付けている</span>';
+          else if (has) action = `<button class="btn-small" data-act="${equipAct}" data-arg="${t.id}">${verb}</button>`;
+          else action = priceBtn(buyAct, t.id, t.price, !freeParts && save.coin < t.price);
+          return `<div class="row"><span>${t.name}</span>${action}</div>`;
+        })
+        .join('')}</section>`;
+    const rimSection = trimSection('ホイールの色', RIMS, save.ownedRims, save.equippedRim, 'buy-rim', 'equip-rim', '付ける');
+    const gripSection = trimSection('ハンドルの握り', GRIPS, save.ownedGrips, save.equippedGrip, 'buy-grip', 'equip-grip', '付ける');
     // その他: ピット保険
     const insuranceSection = `<section><h3>その他</h3>${
       (shop ? !save.insurance : save.insurance)
@@ -276,6 +292,8 @@ export class UI {
       ...SLOTS.map((slot) => ({ id: slot.id, name: slot.name, html: partSection(slot) })),
       { id: 'car', name: '車種', html: carSection },
       { id: 'paint', name: 'ボディの色', html: paintSection },
+      { id: 'rim', name: 'ホイール', html: rimSection },
+      { id: 'grip', name: '握り', html: gripSection },
       { id: 'other', name: 'その他', html: insuranceSection },
     ];
     let body: string;
