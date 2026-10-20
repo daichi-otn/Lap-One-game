@@ -162,8 +162,13 @@ export class UI {
         <div class="kicker">RACING GAME</div>
         <h1 class="title"><span class="title-main">LAP</span> <span class="title-num">ONE</span></h1>
         <div class="checker"></div>
+        <p class="tagline">走って、稼いで、車を育てる</p>
       </div>
-      <div class="coin">所持コイン <b>${save.coin.toLocaleString()}</b></div>
+      <div class="title-card">
+        <div><span class="muted">乗車中</span><b>${carById(save.equippedCar).name}</b></div>
+        <div><span class="muted">所持コイン</span><b class="gold">${save.coin.toLocaleString()}</b></div>
+        <div><span class="muted">出走</span><b>${save.racesRun} 回</b></div>
+      </div>
       <div class="menu">
         <button class="btn big race-btn" data-act="race">レースに出る</button>
         <button class="btn big" data-act="shop">ショップ</button>
