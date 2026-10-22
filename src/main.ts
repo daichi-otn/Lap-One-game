@@ -8,7 +8,7 @@ import { WEATHER, pickWeather, type Weather } from './game/weather';
 import { NEUTRAL_MODS, PARTS, computeMods, type Mods } from './game/parts';
 import { entryFee, payout } from './game/economy';
 import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
-import { PAINTS, paintIndex, PIT_INSURANCE_PRICE } from './game/paints';
+import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
 import {
   ADMIN_ENABLED,
@@ -61,8 +61,6 @@ let feePaid = 0;
 let lastPitStops = 0;
 let stallShown = false; // エンストの通知を一度だけ出すため
 let dnfAt = 0; // 失格になった時刻 (爆発を見せるため、結果を少し遅らせる)
-const PIT_REPAIR_MAX = 3000; // 耐久を全快するときの修理代の上限 (coin)
-const PIT_NITRO_PER_PERCENT = 5; // ニトロを 1% 補充するときの代金 (coin)
 let replayAt = 0; // ゴールした時刻 (リプレイを流してから結果を出す)
 // リプレイ: 走行中の車の位置を一定間隔で記録し、ゴール後に速めの速さで流す
 const REC_STEP = 0.1; // 記録の間隔 (秒)
@@ -225,9 +223,6 @@ function act(name: string, arg?: string): void {
       break;
     case 'equip-paint':
       equipPaint(arg);
-      break;
-    case 'buy-insurance':
-      buyInsurance();
       break;
     case 'buy-car':
       buyCar(arg);
@@ -524,20 +519,6 @@ function equipPaint(id: string | undefined): void {
   showGarage();
 }
 
-// ピットの保険を買う (一度買えば、ずっと有効)
-function buyInsurance(): void {
-  if (save.insurance) return;
-  const price = ADMIN_ENABLED && admin.infiniteCoin ? 0 : PIT_INSURANCE_PRICE;
-  if (save.coin < price) {
-    ui.toast('コインが足りません');
-    return;
-  }
-  save.coin -= price;
-  save.insurance = true;
-  storeSave(save);
-  showGarage();
-}
-
 // 車種を買う (値段はコイン無限のときは 0)
 function buyCar(id: string | undefined): void {
   if (!id) return;
@@ -606,14 +587,8 @@ createFixedStepLoop(
       if (hit > 2) sound.crash(Math.min(1, hit / 15));
       if (race.pitStops !== lastPitStops) {
         lastPitStops = race.pitStops;
-        // 修理代とニトロの補充は、持っているコインから払う (足りなければ残りだけ)
-        const bill = race.lastPitBill;
-        const discount = save.insurance ? 0.5 : 1; // 保険があれば半額
-        const cost = Math.round((bill.damage * PIT_REPAIR_MAX + bill.nitro * PIT_NITRO_PER_PERCENT) * discount);
-        const paid = Math.min(save.coin, cost);
-        save.coin -= paid;
-        storeSave(save);
-        ui.toast(`ピット: 耐久全快・ニトロ満タン (修理代 ${paid.toLocaleString()} coin)`, true);
+        // ピットは無料: 耐久とニトロを満タンにする
+        ui.toast('ピット: 耐久全快・ニトロ満タン', true);
         ui.pitFade();
       }
       if (race.player.stalled && !stallShown) {

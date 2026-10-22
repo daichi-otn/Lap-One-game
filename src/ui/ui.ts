@@ -2,7 +2,7 @@ import { COURSES, type Course } from '../game/courses';
 import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { CAR_MODELS, carById, mulMods, usedKey, usedPrice } from '../game/cars';
-import { PAINTS, PIT_INSURANCE_PRICE } from '../game/paints';
+import { PAINTS } from '../game/paints';
 import { GRIPS, RIMS } from '../game/trims';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
 import { REDLINE_RPM, REDLINE_STALL_SECONDS } from '../game/car';
@@ -277,16 +277,6 @@ export class UI {
         .join('')}</section>`;
     const rimSection = trimSection('ホイールの色', RIMS, save.ownedRims, save.equippedRim, 'buy-rim', 'equip-rim', '付ける');
     const gripSection = trimSection('ハンドルの握り', GRIPS, save.ownedGrips, save.equippedGrip, 'buy-grip', 'equip-grip', '付ける');
-    // その他: ピット保険
-    const insuranceSection = `<section><h3>その他</h3>${
-      (shop ? !save.insurance : save.insurance)
-        ? `<div class="row"><span>ピット保険（修理代が半額）</span>${
-            save.insurance
-              ? '<span class="tag">加入中</span>'
-              : priceBtn('buy-insurance', '', PIT_INSURANCE_PRICE, !freeParts && save.coin < PIT_INSURANCE_PRICE)
-          }</div>`
-        : '<p class="note">買うものはありません</p>'
-    }</section>`;
     // 分類ごとのまとまり (ショップではカテゴリーを選んでから、その中を見る)
     const categories: { id: string; name: string; html: string }[] = [
       ...SLOTS.map((slot) => ({ id: slot.id, name: slot.name, html: partSection(slot) })),
@@ -294,7 +284,6 @@ export class UI {
       { id: 'paint', name: 'ボディの色', html: paintSection },
       { id: 'rim', name: 'ホイール', html: rimSection },
       { id: 'grip', name: '握り', html: gripSection },
-      { id: 'other', name: 'その他', html: insuranceSection },
     ];
     let body: string;
     let title = 'ガレージ';
