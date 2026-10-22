@@ -248,6 +248,14 @@ export class World {
     this.normalsDirty.clear();
   }
 
+  // コースの飾り付け (空と霧の色)。天候の後に掛けて、指定した色に変える
+  setDecor(decor?: { sky?: string; fog?: string }): void {
+    if (!decor) return;
+    if (decor.sky) this.scene.background = new THREE.Color(decor.sky);
+    if (decor.fog && this.scene.fog instanceof THREE.Fog) this.scene.fog.color.set(decor.fog);
+    else if (decor.sky && this.scene.fog instanceof THREE.Fog) this.scene.fog.color.set(decor.sky);
+  }
+
   setWeather(w: WeatherEffect, vision: number): void {
     this.scene.background = new THREE.Color(w.sky);
     this.scene.fog = new THREE.Fog(w.sky, w.fogNear, w.fogFar * vision);

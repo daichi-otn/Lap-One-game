@@ -9,16 +9,24 @@ export interface EventConfig {
   enabled: boolean; // オフにすると、期間内でも開催しない
 }
 
+// コースの飾り付け: 空と霧の色 (例: '#ff9966')。指定したところだけ変わる
+export interface CourseDecor {
+  sky?: string;
+  fog?: string;
+}
+
 export interface GameConfig {
   title: { tagline: string; banner: string }; // タイトルのキャッチコピー、上に出す告知 (空なら出さない)
   events: EventConfig[];
   courseTags: Record<string, string>; // コースに付けるラベル (例: 'NEW')
+  courseDecor: Record<string, CourseDecor>; // コースごとの飾り付け
 }
 
 export const DEFAULT_CONFIG: GameConfig = {
   title: { tagline: '走って、稼いで、車を育てる', banner: '' },
   events: [],
   courseTags: {},
+  courseDecor: {},
 };
 
 // 設定を読む。読めなければ、既定の設定を使う (ゲームは止めない)
@@ -31,6 +39,7 @@ export async function loadConfig(): Promise<GameConfig> {
       title: { ...DEFAULT_CONFIG.title, ...raw.title },
       events: Array.isArray(raw.events) ? raw.events : [],
       courseTags: raw.courseTags ?? {},
+      courseDecor: raw.courseDecor ?? {},
     };
   } catch {
     return DEFAULT_CONFIG;

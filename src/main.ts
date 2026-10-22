@@ -430,6 +430,7 @@ function startRace(c: Course): void {
 
   world.setTrack(track);
   world.setWeather(WEATHER[weather], playerMods.vision);
+  world.setDecor(config.courseDecor[c.id]);
   world.setCars(race.cars);
   sound.startRace(WEATHER[weather].rain);
   lastPitStops = 0;

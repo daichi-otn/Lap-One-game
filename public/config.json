@@ -14,5 +14,11 @@
       "enabled": false
     }
   ],
-  "courseTags": {}
+  "courseTags": {},
+  "courseDecor": {
+    "harbor": {
+      "sky": "#ff9966",
+      "fog": "#ffcc99"
+    }
+  }
 }
