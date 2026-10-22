@@ -2,6 +2,7 @@ import { COURSES, type Course } from '../game/courses';
 import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { CAR_MODELS, carById, mulMods, usedKey, usedPrice } from '../game/cars';
+import { todayKey } from '../game/rewards';
 import { PAINTS } from '../game/paints';
 import { GRIPS, RIMS } from '../game/trims';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
@@ -172,12 +173,28 @@ export class UI {
       </div>
       <div class="menu">
         <button class="btn big race-btn" data-act="race">レースに出る</button>
+        ${save.lastBonus !== todayKey() ? '<button class="btn big" data-act="daily">デイリーボーナスを受け取る</button>' : ''}
         <button class="btn big" data-act="shop">ショップ</button>
+        <button class="btn big" data-act="achievements">実績</button>
         <button class="btn big" data-act="garage">ガレージ</button>
         <button class="btn big" data-act="settings">設定</button>
       </div>
       <p class="note">${save.racesRun === 0 ? '初回レースは運営会社が車を支給します（参加費なし）' : `参加費 ${entryFee(save.racesRun).toLocaleString()} coin ／ 出走回数 ${save.racesRun}`}</p>`);
     this.screen.classList.add('title-photo');
+  }
+
+  // 実績の一覧 (達成と、もらえるコイン)
+  showAchievements(save: SaveData, list: { id: string; name: string; desc: string; reward: number }[]): void {
+    const rows = list
+      .map((a) => {
+        const got = save.achievements.includes(a.id);
+        return `<div class="row"><span><b>${a.name}</b><br><span class="muted">${a.desc}</span></span><span class="${got ? 'tag' : 'muted'}">${got ? '達成' : `+${a.reward.toLocaleString()}`}</span></div>`;
+      })
+      .join('');
+    this.setScreen(`
+      <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
+      <h2>実績</h2>
+      <section>${rows}</section>`);
   }
 
   // filter: 難易度で絞る (空なら全部)。上の札で切り替える

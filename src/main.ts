@@ -10,6 +10,7 @@ import { entryFee, payout } from './game/economy';
 import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
 import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
+import { ACHIEVEMENTS, DAILY_BONUS, todayKey } from './game/rewards';
 import {
   ADMIN_ENABLED,
   loadAdmin,
@@ -245,6 +246,12 @@ function act(name: string, arg?: string): void {
     case 'camera':
       firstPerson = !firstPerson;
       break;
+    case 'daily':
+      claimDaily();
+      break;
+    case 'achievements':
+      ui.showAchievements(save, ACHIEVEMENTS);
+      break;
     case 'reset':
       resetSave();
       break;
@@ -266,6 +273,16 @@ async function toggleGyro(): Promise<void> {
   }
   storeSettings(settings);
   showSettings();
+}
+
+// 毎日のボーナス: 1日1回だけ受け取れる
+function claimDaily(): void {
+  if (save.lastBonus === todayKey()) return;
+  save.lastBonus = todayKey();
+  save.coin += DAILY_BONUS;
+  storeSave(save);
+  ui.toast(`デイリーボーナス +${DAILY_BONUS.toLocaleString()} coin`, true);
+  showMenu();
 }
 
 // セーブデータを初期状態に戻す (誤操作を防ぐため確認を取る)
@@ -443,6 +460,15 @@ function finishRace(): void {
   const outcome = race.outcome ?? 'dnf';
   const pay = payout(outcome, course.prizeMult);
   save.coin += pay;
+  // 優勝・完走の回数を数えて、実績を確かめる
+  if (outcome === 'win') save.wins += 1;
+  if (outcome !== 'dnf') save.finishes += 1;
+  for (const a of ACHIEVEMENTS) {
+    if (save.achievements.includes(a.id) || !a.done(save)) continue;
+    save.achievements.push(a.id);
+    save.coin += a.reward;
+    ui.toast(`実績達成: ${a.name} (+${a.reward.toLocaleString()} coin)`, true);
+  }
 
   const t = race.player.finishTime;
   if (outcome !== 'dnf' && t !== undefined) {

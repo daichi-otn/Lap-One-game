@@ -11,6 +11,10 @@ export interface SaveData {
   ownedPaints: string[]; // 持っているボディの色
   equippedPaint: string; // 塗ってある色
   insurance: boolean; // ピットの修理代が半分になる保険
+  lastBonus: string; // 毎日のボーナスを受け取った日 (YYYY-MM-DD)
+  wins: number; // 優勝の回数
+  finishes: number; // 完走の回数
+  achievements: string[]; // 達成した実績
   ownedRims: string[]; // 持っているホイールの色
   equippedRim: string;
   ownedGrips: string[]; // 持っているハンドルの握りの色
@@ -96,6 +100,10 @@ export function newSave(): SaveData {
     ownedPaints: ['blue'],
     equippedPaint: 'blue',
     insurance: false,
+    lastBonus: '',
+    wins: 0,
+    finishes: 0,
+    achievements: [],
     ownedRims: ['rim-0'],
     equippedRim: 'rim-0',
     ownedGrips: ['grip-0'],
