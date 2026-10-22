@@ -3,6 +3,7 @@ import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { CAR_MODELS, carById, mulMods, usedKey, usedPrice } from '../game/cars';
 import { todayKey } from '../game/rewards';
+import { activeEvents, DEFAULT_CONFIG, eventPrizeMult, GameConfig } from '../game/config';
 import { PAINTS } from '../game/paints';
 import { GRIPS, RIMS } from '../game/trims';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
@@ -70,6 +71,8 @@ export class UI {
   private stopViewer: CarViewer | null = null;
   private root: HTMLElement;
   private screenKind = '';
+
+  private config: GameConfig = DEFAULT_CONFIG;
 
   constructor(
     root: HTMLElement,
@@ -164,7 +167,9 @@ export class UI {
         <div class="kicker">RACING GAME</div>
         <h1 class="title"><span class="title-main">LAP</span> <span class="title-num">ONE</span></h1>
         <div class="checker"></div>
-        <p class="tagline">走って、稼いで、車を育てる</p>
+        <p class="tagline">${this.config.title.tagline}</p>
+        ${this.config.title.banner ? `<div class="event-banner">${this.config.title.banner}</div>` : ''}
+        ${activeEvents(this.config, todayKey()).map((e) => `<div class="event-banner">開催中: ${e.name}（賞金 ×${e.prizeMult}）</div>`).join('')}
       </div>
       <div class="title-card">
         <div><span class="muted">乗車中</span><b>${carById(save.equippedCar).name}</b></div>
@@ -181,6 +186,11 @@ export class UI {
       </div>
       <p class="note">${save.racesRun === 0 ? '初回レースは運営会社が車を支給します（参加費なし）' : `参加費 ${entryFee(save.racesRun).toLocaleString()} coin ／ 出走回数 ${save.racesRun}`}</p>`);
     this.screen.classList.add('title-photo');
+  }
+
+  // 運営の設定を反映する
+  setConfig(c: GameConfig): void {
+    this.config = c;
   }
 
   // 実績の一覧 (達成と、もらえるコイン)
@@ -211,8 +221,8 @@ export class UI {
         <div class="card course-card">
           <div class="course-map">${courseMapSvg(c)}</div>
           <div class="course-info">
-          <div class="card-head"><b>${c.name}</b><span class="tag">${c.difficulty}</span></div>
-          <div class="muted">周回 ${c.laps} ／ 賞金倍率 ×${c.prizeMult}</div>
+          <div class="card-head"><b>${c.name}</b><span class="tag">${c.difficulty}</span>${this.config.courseTags[c.id] ? `<span class="tag hot">${this.config.courseTags[c.id]}</span>` : ''}</div>
+          <div class="muted">周回 ${c.laps} ／ 賞金倍率 ×${c.prizeMult}${eventPrizeMult(this.config, c.id, todayKey()) !== 1 ? ` （開催中のイベントで ×${eventPrizeMult(this.config, c.id, todayKey())}）` : ''}</div>
           <div class="muted">天候: ${Object.keys(c.weather).map((w) => weatherLabel(w)).join('・')}</div>
           <div class="best">ベストタイム: ${formatBest(save.bestTime[c.id])}</div>
           <button class="btn" data-act="course" data-arg="${c.id}" ${save.coin < fee ? 'disabled' : ''}>

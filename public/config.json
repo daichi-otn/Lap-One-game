@@ -1,0 +1,18 @@
+{
+  "title": {
+    "tagline": "走って、稼いで、車を育てる",
+    "banner": ""
+  },
+  "events": [
+    {
+      "id": "sample",
+      "name": "夜のレース週間",
+      "start": "2026-01-01",
+      "end": "2026-01-07",
+      "courses": [],
+      "prizeMult": 2,
+      "enabled": false
+    }
+  ],
+  "courseTags": {}
+}

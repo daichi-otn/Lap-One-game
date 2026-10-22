@@ -11,6 +11,7 @@ import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
 import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
 import { ACHIEVEMENTS, DAILY_BONUS, todayKey } from './game/rewards';
+import { DEFAULT_CONFIG, eventPrizeMult, GameConfig, loadConfig } from './game/config';
 import {
   ADMIN_ENABLED,
   loadAdmin,
@@ -339,6 +340,7 @@ function adminAct(name: string, arg?: string): void {
 // engineSwap: エンジンを換えた直後なら、ボンネットを開けてエンジンを見せる
 let garageMode: 'shop' | 'garage' = 'garage'; // 今開いているのがショップかガレージか
 let shopCategory = ''; // ショップで選んでいる分類
+let config: GameConfig = DEFAULT_CONFIG; // 運営の設定 (イベント・タイトルの表示)
 let garageCategory = 'engine'; // ガレージで選んでいる分類
 let courseFilter = ''; // コース選択で選んでいる難易度 (空なら全部)
 
@@ -458,7 +460,7 @@ function finishRace(): void {
   mode = 'result';
   sound.stopRace();
   const outcome = race.outcome ?? 'dnf';
-  const pay = payout(outcome, course.prizeMult);
+  const pay = payout(outcome, course.prizeMult * eventPrizeMult(config, course.id, todayKey()));
   save.coin += pay;
   // 優勝・完走の回数を数えて、実績を確かめる
   if (outcome === 'win') save.wins += 1;
@@ -659,3 +661,9 @@ createFixedStepLoop(
 
 showSplash(document.getElementById('ui')!, () => {});
 showMenu();
+// 運営の設定 (config.json) を読み、読めたらタイトルなどを更新する
+void loadConfig().then((c) => {
+  config = c;
+  ui.setConfig(c);
+  if (mode === 'screen') showMenu();
+});
