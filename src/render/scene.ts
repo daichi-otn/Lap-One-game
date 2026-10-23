@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import type { Track } from '../game/track';
 import { RAIL_GAP, SAMPLES, pitLaneOffset, tangentAt } from '../game/track';
 import { REDLINE_RPM, type CarState } from '../game/car';
+import type { DecorationConfig } from '../game/config';
+import { buildDecorations } from './decor';
 import { Particles, fireTexture, smokeTexture } from './effects';
 import type { WeatherEffect } from '../game/weather';
 import { DEFAULT_VIEW, DEFAULT_WHEEL, type FirstPersonView, type Quality, type WheelOffset } from '../game/save';
@@ -183,6 +185,9 @@ export class World {
   private rainOffsets = new Float32Array(0);
   private cars = new Map<CarState, THREE.Group>();
   private trackPts: THREE.Vector3[] = [];
+  private currentTrack: Track | null = null;
+  private decorList: DecorationConfig[] = [];
+  private decorGroup: THREE.Group | null = null;
   private trackWidth = 20;
   private exploded = new Set<CarState>();
   private normalsDirty = new Set<THREE.Mesh>();
@@ -228,7 +233,22 @@ export class World {
     this.sun.castShadow = cfg.shadows;
   }
 
+  // 飾り物 (ハロウィンなど)。コースに合わせて並べ直す
+  setDecorations(list: DecorationConfig[]): void {
+    this.decorList = list;
+    this.rebuildDecorations();
+  }
+
+  private rebuildDecorations(): void {
+    if (this.decorGroup) this.scene.remove(this.decorGroup);
+    this.decorGroup = null;
+    if (!this.currentTrack || this.decorList.length === 0) return;
+    this.decorGroup = buildDecorations(this.currentTrack, this.decorList);
+    this.scene.add(this.decorGroup);
+  }
+
   setTrack(track: Track): void {
+    this.currentTrack = track;
     this.trackPts = track.pts;
     this.trackWidth = track.course.width;
     if (this.road) this.scene.remove(this.road);
@@ -246,6 +266,7 @@ export class World {
     this.flying = [];
     this.exploded.clear();
     this.normalsDirty.clear();
+    this.rebuildDecorations();
   }
 
   // コースの飾り付け (空と霧の色)。天候の後に掛けて、指定した色に変える

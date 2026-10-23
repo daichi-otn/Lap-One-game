@@ -11,7 +11,7 @@ import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
 import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
 import { ACHIEVEMENTS, DAILY_BONUS, todayKey } from './game/rewards';
-import { DEFAULT_CONFIG, eventPrizeMult, GameConfig, loadConfig } from './game/config';
+import { decorFor, decorationsFor, DEFAULT_CONFIG, eventPrizeMult, GameConfig, loadConfig } from './game/config';
 import {
   ADMIN_ENABLED,
   loadAdmin,
@@ -430,7 +430,8 @@ function startRace(c: Course): void {
 
   world.setTrack(track);
   world.setWeather(WEATHER[weather], playerMods.vision);
-  world.setDecor(config.courseDecor[c.id]);
+  world.setDecor(decorFor(config, c.id));
+  world.setDecorations(decorationsFor(config, c.id));
   world.setCars(race.cars);
   sound.startRace(WEATHER[weather].rain);
   lastPitStops = 0;
