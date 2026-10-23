@@ -289,10 +289,10 @@ function applyLimited(items: LimitedItem[]): void {
   for (const it of items) {
     const window = { start: it.start, end: it.end };
     if (it.kind === 'paint') {
-      PAINTS.push({ id: it.id, name: it.name, price: it.price, hue: it.hue ?? 0, dark: it.dark ?? 1, window });
+      PAINTS.push({ id: it.id, name: it.name, price: it.price, hue: it.hue ?? 0, dark: it.dark ?? 1, window, icon: it.icon });
     } else if (it.kind === 'rim' || it.kind === 'grip') {
       const color = parseInt((it.color ?? '#888888').replace('#', ''), 16);
-      (it.kind === 'rim' ? RIMS : GRIPS).push({ id: it.id, name: it.name, price: it.price, color, window });
+      (it.kind === 'rim' ? RIMS : GRIPS).push({ id: it.id, name: it.name, price: it.price, color, window, icon: it.icon });
     }
   }
 }

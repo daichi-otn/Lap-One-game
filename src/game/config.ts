@@ -46,6 +46,7 @@ export interface LimitedItem {
   hue?: number; // ボディの色: 色相 (0〜360)
   dark?: number; // ボディの色: 明るさ (0.3〜1.8)
   color?: string; // ホイール・握り: 色 (#RRGGBB)
+  icon?: string; // ショップに出す絵 (public/items/ の中の画像)
 }
 
 export interface GameConfig {

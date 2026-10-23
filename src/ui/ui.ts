@@ -345,10 +345,10 @@ export class UI {
       if (equipped) action = '<span class="tag">塗装中</span>';
       else if (owned) action = `<button class="btn-small" data-act="equip-paint" data-arg="${paint.id}">塗る</button>`;
       else action = priceBtn('buy-paint', paint.id, paint.price, !freeParts && save.coin < paint.price);
-      return `<div class="row"><span>${paint.name}${paint.window ? ' <span class="tag hot">期間限定</span>' : ''}</span>${action}</div>`;
+      return `<div class="row"><span>${paint.icon ? `<img class="item-icon" src="./items/${paint.icon}" alt="">` : ''}${paint.name}${paint.window ? ' <span class="tag hot">期間限定</span>' : ''}</span>${action}</div>`;
     }).join('')}</section>`;
     // ホイールの色・ハンドルの握りの色
-    const trimSection = (title: string, list: { id: string; name: string; price: number; window?: { start: string; end: string } }[], owned: string[], equipped: string, buyAct: string, equipAct: string, verb: string): string =>
+    const trimSection = (title: string, list: { id: string; name: string; price: number; icon?: string; window?: { start: string; end: string } }[], owned: string[], equipped: string, buyAct: string, equipAct: string, verb: string): string =>
       `<section><h3>${title}</h3>${list
         .map((t) => {
           const has = owned.includes(t.id);
@@ -358,7 +358,7 @@ export class UI {
           if (equipped === t.id) action = '<span class="tag">付けている</span>';
           else if (has) action = `<button class="btn-small" data-act="${equipAct}" data-arg="${t.id}">${verb}</button>`;
           else action = priceBtn(buyAct, t.id, t.price, !freeParts && save.coin < t.price);
-          return `<div class="row"><span>${t.name}${t.window ? ' <span class="tag hot">期間限定</span>' : ''}</span>${action}</div>`;
+          return `<div class="row"><span>${t.icon ? `<img class="item-icon" src="./items/${t.icon}" alt="">` : ''}${t.name}${t.window ? ' <span class="tag hot">期間限定</span>' : ''}</span>${action}</div>`;
         })
         .join('')}</section>`;
     const rimSection = trimSection('ホイールの色', RIMS, save.ownedRims, save.equippedRim, 'buy-rim', 'equip-rim', '付ける');

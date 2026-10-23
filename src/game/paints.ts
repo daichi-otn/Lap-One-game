@@ -8,6 +8,7 @@ export interface Paint {
   pattern?: 'stripe' | 'checker' | 'flame'; // 模様 (あれば、ベースの色の上に重ねる)
   accent?: number; // 模様の色
   window?: { start: string; end: string }; // 期間限定: 買える期間
+  icon?: string; // ショップに出す絵
 }
 
 export const PAINTS: Paint[] = [
