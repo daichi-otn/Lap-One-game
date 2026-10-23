@@ -88,6 +88,10 @@
       .gauge { position: absolute; top: 58px; width: 120px; height: 120px; pointer-events: none; }
       .gauge-left { left: 10px; }
       .gauge-right { right: 10px; }
+      .hud.first-person .gauge { transform: scale(0.55); transform-origin: top; opacity: 0.5; }
+      .hud.first-person .gauge-left { left: 0; }
+      .hud.first-person .gauge-right { right: 0; }
+      .hud.first-person .redwarn { opacity: 0.6; }
       .gauge svg { display: block; }
       .screen.title-photo { background: linear-gradient(rgba(11, 17, 24, 0.15), rgba(11, 17, 24, 0.75)), url('./images/title-bg.jpg') center / cover no-repeat; }
       #ui.preview > .screen { background: rgba(11, 17, 24, 0.3); }

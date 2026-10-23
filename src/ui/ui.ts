@@ -471,6 +471,8 @@ export class UI {
   updateHud(race: Race, firstPerson: boolean): void {
     const q = (k: string) => this.hud.querySelector<HTMLElement>(`[data-hud="${k}"]`)!;
     const p = race.player;
+    // 一人称のときは、速度計を小さく薄くして、前の視界をあける
+    this.hud.classList.toggle('first-person', firstPerson);
     const laps = race.track.course.laps;
     const lapNow = Math.min(laps, Math.max(1, Math.floor(p.dist / race.track.length) + 1));
     q('lap').textContent = `LAP ${lapNow}/${laps}`;
