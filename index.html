@@ -122,8 +122,16 @@
         .center { position: absolute; top: 30%; left: 0; right: 0; text-align: center; font-weight: 900; color: #fff; text-shadow: 0 3px 10px #000; pointer-events: none; }
       .finish-banner { position: absolute; left: 50%; top: 28%; transform: translateX(-50%); text-align: center; pointer-events: none; white-space: nowrap; animation: fbIn 0.6s cubic-bezier(.2,1.4,.4,1) both; }
       .fb-flag { height: 16px; width: min(320px, 70vw); margin: 0 auto 10px; background: repeating-conic-gradient(#ffffff 0 25%, #111 0 50%) 0 0 / 32px 32px; border: 2px solid #111; }
-      .fb-main { font-size: 64px; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 4px 14px #000; letter-spacing: 4px; }
-      .fb-pos { font-size: 30px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 8px #000; }
+            .fb-main { position: relative; font-size: 72px; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 0 24px #ffd23f, 0 4px 14px #000; letter-spacing: 4px; overflow: hidden; }
+      .fb-main span { display: inline-block; background: linear-gradient(180deg, #fff6c2, #ffd23f 55%, #ff9a1a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 0 #3b2600); }
+      .fb-main::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.85), transparent); animation: fbShine 1.4s ease-in-out 0.5s both; }
+      .fb-burst { position: absolute; left: 50%; top: 50%; width: 520px; height: 520px; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(255,210,63,.85) 0%, rgba(255,122,26,.35) 35%, transparent 65%); animation: fbBurst 1.2s ease-out both; }
+      .fb-confetti { position: absolute; left: -50vw; right: -50vw; top: -220px; height: 760px; pointer-events: none; }
+      .fb-confetti i { position: absolute; top: 0; width: 10px; height: 16px; border-radius: 2px; opacity: 0; animation: fbFall linear both; }
+      @keyframes fbShine { 0% { left: -60%; } 100% { left: 120%; } }
+      @keyframes fbBurst { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 40% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; } }
+      @keyframes fbFall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(760px) rotate(var(--rot)); opacity: 0; } }
+      .fb-pos { position: relative; font-size: 34px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 8px #000; }
       @keyframes fbIn { 0% { transform: translateX(-50%) scale(2.2); opacity: 0; } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
       .lights { display: flex; justify-content: center; gap: 14px; margin-bottom: 10px; }
       .lamp { width: 26px; height: 26px; border-radius: 50%; background: #2a1414; border: 3px solid #0b0b0b; box-shadow: inset 0 -3px 6px rgba(0,0,0,.5); }

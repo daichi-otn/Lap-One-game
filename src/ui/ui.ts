@@ -194,7 +194,18 @@ export class UI {
     this.hideFinish();
     const el = document.createElement('div');
     el.className = 'finish-banner';
-    el.innerHTML = `<div class="fb-flag"></div><div class="fb-main">FINISH</div><div class="fb-pos">${position} 位</div>`;
+    // 紙吹雪: 色とばらつきを変えて、画面の上から降らせる
+    const colors = ['#ffd23f', '#ff5a1f', '#4fc3f7', '#ffffff', '#7bed9f', '#ff4d6d'];
+    let confetti = '';
+    for (let i = 0; i < 70; i++) {
+      const left = Math.random() * 100;
+      const delay = Math.random() * 0.8;
+      const dur = 2.2 + Math.random() * 1.6;
+      const rot = Math.random() * 720 - 360;
+      const color = colors[i % colors.length];
+      confetti += `<i style="left:${left.toFixed(1)}%;background:${color};animation-delay:${delay.toFixed(2)}s;animation-duration:${dur.toFixed(2)}s;--rot:${rot.toFixed(0)}deg"></i>`;
+    }
+    el.innerHTML = `<div class="fb-burst"></div><div class="fb-flag"></div><div class="fb-main"><span>FINISH</span></div><div class="fb-pos">${position} 位</div><div class="fb-confetti">${confetti}</div>`;
     this.hud.appendChild(el);
     this.finishEl = el;
   }
