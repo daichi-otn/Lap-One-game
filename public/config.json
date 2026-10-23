@@ -16,14 +16,12 @@
   ],
   "courseTags": {},
   "courseDecor": {
-    "easy": {
-      "sky": "#000000"
-    },
     "harbor": {
-      "sky": "#ff9966",
       "fog": "#ffcc99"
     }
   },
-  "globalDecor": {},
+  "globalDecor": {
+    "sky": "#ff6a00"
+  },
   "decorations": []
 }
