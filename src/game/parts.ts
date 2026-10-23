@@ -8,7 +8,9 @@ export type Slot =
   | 'brake'
   | 'seat'
   | 'handle'
-  | 'window';
+  | 'window'
+  | 'headlight'
+  | 'taillight';
 
 export interface Mods {
   topSpeed: number;
@@ -54,6 +56,8 @@ export const SLOTS: { id: Slot; name: string }[] = [
   { id: 'seat', name: 'シート' },
   { id: 'handle', name: 'ハンドル' },
   { id: 'window', name: '窓' },
+  { id: 'headlight', name: 'ヘッドライト' },
+  { id: 'taillight', name: 'テールランプ' },
 ];
 
 interface Tier {
@@ -107,6 +111,14 @@ const SPECS: Record<Slot, { names: string[]; mods: (i: number) => Partial<Mods> 
   window: {
     names: ['標準窓', 'UVカットガラス', '断熱ガラス', 'ワイパー付き窓', '撥水ガラス', '強化ガラス', 'スモーク窓', 'ヘッドアップ付き', '超強化ガラス', 'レース用ポリカ窓'],
     mods: (i) => ({ vision: LADDER(1.25, i) }),
+  },
+  headlight: {
+    names: ['標準ライト', 'ハロゲン', 'HID (白)', 'LED (白)', 'LED (黄)', 'LED (青白)', 'デイライト付き', 'レーザー風', 'ライトバー', '競技用ライト'],
+    mods: () => ({}),
+  },
+  taillight: {
+    names: ['標準テール', '赤いテール', 'LEDテール', 'スモークテール', 'ブラックアウト', 'ライトバー式', 'ネオン風', 'オレンジテール', 'レース用テール', '競技用LED'],
+    mods: () => ({}),
   },
 };
 

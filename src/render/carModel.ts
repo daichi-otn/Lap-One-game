@@ -42,6 +42,8 @@ export function lookFromEquipped(equipped: Partial<Record<string, string>>): Loo
 export interface Look {
   model?: number; // 車種 (0 が標準)
   paint?: number; // ボディの色 (PAINTS の番号)
+  headlight?: number; // ヘッドライトの段階
+  taillight?: number; // テールランプの段階
   rim?: number; // ホイールの色 (RIMS の番号)
   grip?: number; // ハンドルの握りの色 (GRIPS の番号)
   turbo?: number;
@@ -626,8 +628,11 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
     }
   }
   // ライト: 前後の小さなランプ (車体の表面に付ける)
-  const lampMat = new THREE.MeshStandardMaterial({ color: 0xfff6d5, emissive: 0xfff1b8, emissiveIntensity: 0.6 });
-  const tailMat = new THREE.MeshStandardMaterial({ color: 0x550000, emissive: 0xff2020, emissiveIntensity: 0.8 });
+  // ヘッドライト・テールランプの色は、選んだ段階で変わる
+  const headColor = tierColor(TIER_COLORS_MORE.headlight, look.headlight ?? 1);
+  const tailColor = tierColor(TIER_COLORS_MORE.taillight, look.taillight ?? 1);
+  const lampMat = new THREE.MeshStandardMaterial({ color: headColor, emissive: headColor, emissiveIntensity: 0.6 });
+  const tailMat = new THREE.MeshStandardMaterial({ color: 0x220000, emissive: tailColor, emissiveIntensity: 0.9 });
   det.lightsFront = [];
   det.lightsRear = [];
   for (const z of [0.25, -0.25]) { // 車体の幅 (約 ±0.37) の内側に置く
