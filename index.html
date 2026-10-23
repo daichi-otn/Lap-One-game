@@ -120,6 +120,11 @@
       .slider input { width: 100%; }
       .redwarn { position: absolute; top: 184px; left: 10px; width: 120px; text-align: center; font-size: 12px; font-weight: 700; color: #ff5252; text-shadow: 0 1px 4px #000; pointer-events: none; }
         .center { position: absolute; top: 30%; left: 0; right: 0; text-align: center; font-weight: 900; color: #fff; text-shadow: 0 3px 10px #000; pointer-events: none; }
+      .finish-banner { position: absolute; left: 50%; top: 28%; transform: translateX(-50%); text-align: center; pointer-events: none; white-space: nowrap; animation: fbIn 0.6s cubic-bezier(.2,1.4,.4,1) both; }
+      .fb-flag { height: 16px; width: min(320px, 70vw); margin: 0 auto 10px; background: repeating-conic-gradient(#ffffff 0 25%, #111 0 50%) 0 0 / 32px 32px; border: 2px solid #111; }
+      .fb-main { font-size: 64px; font-weight: 900; font-style: italic; color: #fff; text-shadow: 0 4px 14px #000; letter-spacing: 4px; }
+      .fb-pos { font-size: 30px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 8px #000; }
+      @keyframes fbIn { 0% { transform: translateX(-50%) scale(2.2); opacity: 0; } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
       .lights { display: flex; justify-content: center; gap: 14px; margin-bottom: 10px; }
       .lamp { width: 26px; height: 26px; border-radius: 50%; background: #2a1414; border: 3px solid #0b0b0b; box-shadow: inset 0 -3px 6px rgba(0,0,0,.5); }
       .lamp.red { background: radial-gradient(circle at 35% 35%, #ffb3b3, #ff1f1f 60%, #8a0000); box-shadow: 0 0 18px #ff2a2a, 0 0 4px #ff8a8a; }

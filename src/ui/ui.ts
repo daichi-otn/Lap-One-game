@@ -188,6 +188,22 @@ export class UI {
     this.screen.classList.add('title-photo');
   }
 
+  // 完走の表示: 市松模様の旗と「FINISH」、順位
+  private finishEl: HTMLElement | null = null;
+  showFinish(position: number): void {
+    this.hideFinish();
+    const el = document.createElement('div');
+    el.className = 'finish-banner';
+    el.innerHTML = `<div class="fb-flag"></div><div class="fb-main">FINISH</div><div class="fb-pos">${position} 位</div>`;
+    this.hud.appendChild(el);
+    this.finishEl = el;
+  }
+
+  hideFinish(): void {
+    this.finishEl?.remove();
+    this.finishEl = null;
+  }
+
   // スタートの表示: 3 つのランプが順に赤く点き、消えると数字が弾けて、最後に緑の「GO!」
   private startKey = '';
   private showStart(el: HTMLElement, race: Race): void {

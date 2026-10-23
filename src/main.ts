@@ -63,7 +63,9 @@ let feePaid = 0;
 let lastPitStops = 0;
 let stallShown = false; // エンストの通知を一度だけ出すため
 let dnfAt = 0; // 失格になった時刻 (爆発を見せるため、結果を少し遅らせる)
-let replayAt = 0; // ゴールした時刻 (リプレイを流してから結果を出す)
+let replayAt = 0; // リプレイを流し始めた時刻 (完走のあと、少し置いてから)
+let finishAt = 0; // ゴールした時刻 (FINISH の表示を出した時刻)
+const FINISH_HOLD_MS = 2200; // FINISH を見せてから、リプレイに移るまで
 // リプレイ: 走行中の車の位置を一定間隔で記録し、ゴール後に速めの速さで流す
 const REC_STEP = 0.1; // 記録の間隔 (秒)
 const REPLAY_RATE = 2; // リプレイの速さ (実時間の何倍)
@@ -438,6 +440,7 @@ function startRace(c: Course): void {
   stallShown = false;
   dnfAt = 0;
   replayAt = 0;
+  finishAt = 0;
   recording = [];
   recTimer = 0;
   firstPerson = false;
@@ -629,11 +632,19 @@ createFixedStepLoop(
       // 失格は爆発を見せてから結果を出す。完走は、すぐに結果を出す
       if (race.phase === 'finished') {
         if (race.outcome !== 'dnf') {
-          // 完走はリプレイを流してから結果を出す
-          if (replayAt === 0) {
-            replayAt = performance.now();
-            ui.hideHud();
-          } else if (((performance.now() - replayAt) / 1000) * REPLAY_RATE >= (recording.length - 1) * REC_STEP) finishRace();
+          // 完走: まず「FINISH」と順位を出し、少ししてから、暗転してリプレイへ。リプレイの後に結果を出す
+          const now = performance.now();
+          if (finishAt === 0) {
+            finishAt = now;
+            ui.showFinish(race.playerPosition());
+          } else if (replayAt === 0) {
+            if (now - finishAt > FINISH_HOLD_MS) {
+              replayAt = now;
+              ui.hideFinish();
+              ui.hideHud();
+              ui.pitFade();
+            }
+          } else if (((now - replayAt) / 1000) * REPLAY_RATE >= (recording.length - 1) * REC_STEP) finishRace();
         } else if (dnfAt === 0) dnfAt = performance.now();
         else if (performance.now() - dnfAt > 2200) finishRace();
       }
