@@ -153,7 +153,8 @@
       .nitro-bar > div { height: 100%; background: linear-gradient(90deg, #3b82f6, #67e8f9); transition: width 0.1s; }
       .pad-btn:active { filter: brightness(1.3); }
       .speed { text-align: center; background: var(--panel); border-radius: 12px; padding: 8px 12px; font-size: 13px; color: var(--muted); }
-      .speed > div:first-child { font-size: 26px; color: var(--text); font-weight: 700; }
+      /* 速度の数字は速度計に任せて、ここでは出さない (耐久の表示だけ残す) */
+      .speed > div:first-child { display: none; }
       .dur { width: 120px; height: 8px; background: #2c3e50; border-radius: 4px; overflow: hidden; margin: 6px auto 2px; }
       .dur > div { height: 100%; background: var(--pos); transition: width 0.2s; }
       .dur > div.low { background: var(--neg); }
@@ -169,8 +170,7 @@
         .pad-btn.gas { width: 86px; height: 86px; font-size: 15px; font-weight: 800; }
         .pad-btn.nitro-btn { width: 74px; height: 74px; font-size: 13px; }
         .hud-bottom { gap: 4px; }
-        .speed { padding: 6px 8px; min-width: 0; white-space: nowrap; }
-        .speed > div:first-child { font-size: 20px; }
+        .speed { padding: 8px 10px; min-width: 0; width: 120px; white-space: nowrap; }
         .dur-label { display: none; }
         /* 狭い画面では、ニトロをアクセルの上に置いて、画面の外へはみ出さないようにする */
         .nitro-btn { position: absolute; right: 4px; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 96px); }
