@@ -5,17 +5,20 @@
   },
   "events": [
     {
-      "id": "sample",
-      "name": "夜のレース週間",
-      "start": "2026-01-01",
-      "end": "2026-01-07",
+      "id": "Halloween",
+      "name": "ハロウィンイベント",
+      "start": "2026-10-01",
+      "end": "2026-10-31",
       "courses": [],
-      "prizeMult": 2,
-      "enabled": false
+      "prizeMult": 1.5,
+      "enabled": true
     }
   ],
   "courseTags": {},
   "courseDecor": {
+    "easy": {
+      "sky": "#000000"
+    },
     "harbor": {
       "sky": "#ff9966",
       "fog": "#ffcc99"
