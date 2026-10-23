@@ -255,6 +255,9 @@ function act(name: string, arg?: string): void {
     case 'achievements':
       ui.showAchievements(save, ACHIEVEMENTS);
       break;
+    case 'help':
+      ui.showHelp();
+      break;
     case 'reset':
       resetSave();
       break;

@@ -181,6 +181,7 @@ export class UI {
         ${save.lastBonus !== todayKey() ? '<button class="btn big" data-act="daily">デイリーボーナスを受け取る</button>' : ''}
         <button class="btn big" data-act="shop">ショップ</button>
         <button class="btn big" data-act="achievements">実績</button>
+        <button class="btn big" data-act="help">遊び方</button>
         <button class="btn big" data-act="garage">ガレージ</button>
         <button class="btn big" data-act="settings">設定</button>
       </div>
@@ -247,6 +248,39 @@ export class UI {
   // 運営の設定を反映する
   setConfig(c: GameConfig): void {
     this.config = c;
+  }
+
+  // 遊び方: 操作・レースの流れ・車づくりを、短く説明する
+  showHelp(): void {
+    const sec = (title: string, items: string[]) =>
+      `<section><h3>${title}</h3><ul class="help-list">${items.map((t) => `<li>${t}</li>`).join('')}</ul></section>`;
+    this.setScreen(`
+      <div class="topbar"><button class="btn-small" data-act="menu">戻る</button></div>
+      <h2>遊び方</h2>
+      ${sec('基本の操作', [
+        'ハンドル: 左右の矢印ボタン、または画面を傾けて (設定でオン)',
+        'アクセル: 右下の緑のボタン。ブレーキは赤、ニトロは青',
+        'ニトロ: 溜まったゲージを使って、一気に加速します。ゲージは走ると溜まります',
+        '視点: 右上の「三人称」「一人称」で切り替えます',
+        'ハンドルだけ操作: 設定でオンにすると、アクセルとブレーキは自動になります',
+      ])}
+      ${sec('レースの流れ', [
+        'スタートランプが消えたら、スタートです',
+        'ゴールすると「FINISH」が出て、リプレイが流れます。タップで飛ばせます',
+        '完走すると、順位に応じて賞金がもらえます。優勝すると特に大きな賞金です',
+        '耐久が0になると失格です。エンジンの回転がレッドゾーンに3秒続くと、エンストして止まります',
+        'ピットに入ると、耐久とニトロが満タンになります (無料)',
+      ])}
+      ${sec('車づくり', [
+        'ショップで、部品や車種、色を買います。分類を選んでから、買うものを選びます',
+        'ガレージで、持っている部品や色を付け替えます。上の札で分類を選びます',
+        'コースによって、参加費と賞金が違います',
+      ])}
+      ${sec('もっと遊ぶ', [
+        'デイリーボーナス: 1日1回、コインがもらえます',
+        '実績: 達成すると、コインがもらえます',
+        '期間限定: 期間の間だけ、特別な色や車が買えることがあります',
+      ])}`);
   }
 
   // 実績の一覧 (達成と、もらえるコイン)
