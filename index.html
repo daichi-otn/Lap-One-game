@@ -119,7 +119,15 @@
       .slider span { display: block; font-size: 14px; margin-bottom: 4px; }
       .slider input { width: 100%; }
       .redwarn { position: absolute; top: 184px; left: 10px; width: 120px; text-align: center; font-size: 12px; font-weight: 700; color: #ff5252; text-shadow: 0 1px 4px #000; pointer-events: none; }
-      .center { position: absolute; top: 35%; left: 0; right: 0; text-align: center; font-size: 72px; font-weight: 800; color: var(--accent); text-shadow: 0 2px 8px #000; }
+        .center { position: absolute; top: 30%; left: 0; right: 0; text-align: center; font-weight: 900; color: #fff; text-shadow: 0 3px 10px #000; pointer-events: none; }
+      .lights { display: flex; justify-content: center; gap: 14px; margin-bottom: 10px; }
+      .lamp { width: 26px; height: 26px; border-radius: 50%; background: #2a1414; border: 3px solid #0b0b0b; box-shadow: inset 0 -3px 6px rgba(0,0,0,.5); }
+      .lamp.red { background: radial-gradient(circle at 35% 35%, #ffb3b3, #ff1f1f 60%, #8a0000); box-shadow: 0 0 18px #ff2a2a, 0 0 4px #ff8a8a; }
+      .lamp.green { background: radial-gradient(circle at 35% 35%, #d6ffe0, #22e05a 60%, #0a6b2a); box-shadow: 0 0 22px #22ff66; }
+      .cd { font-size: 96px; line-height: 1; display: inline-block; animation: cdpop .75s cubic-bezier(.2,1.6,.4,1) both; }
+      .cd.go { font-size: 120px; font-style: italic; color: #6dff8a; text-shadow: 0 0 22px #22ff66, 0 3px 10px #000; animation: gopop .9s ease-out both; }
+      @keyframes cdpop { 0% { transform: scale(2.4); opacity: 0; } 45% { transform: scale(.92); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+      @keyframes gopop { 0% { transform: scale(2.8) skewX(-8deg); opacity: 0; } 35% { transform: scale(.9) skewX(-8deg); opacity: 1; } 100% { transform: scale(1) skewX(-8deg); opacity: 0; } }
       .hud-bottom { position: absolute; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); display: flex; justify-content: space-between; align-items: flex-end; }
       .pad { display: flex; gap: 10px; }
       .pad-btn { width: 96px; height: 96px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); background: rgba(16,24,32,0.55); color: var(--text); font-size: 15px; font-weight: 700; touch-action: none; }

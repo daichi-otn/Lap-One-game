@@ -188,6 +188,35 @@ export class UI {
     this.screen.classList.add('title-photo');
   }
 
+  // スタートの表示: 3 つのランプが順に赤く点き、消えると数字が弾けて、最後に緑の「GO!」
+  private startKey = '';
+  private showStart(el: HTMLElement, race: Race): void {
+    let key = '';
+    let lit = 0;
+    let text = '';
+    let go = false;
+    if (race.phase === 'countdown') {
+      const n = Math.max(1, Math.ceil(race.countdown));
+      lit = Math.min(3, 4 - n);
+      text = String(n);
+      key = `count-${n}`;
+    } else if (race.time < 1) {
+      go = true;
+      text = 'GO!';
+      key = 'go';
+    }
+    if (key === this.startKey) return; // 同じ表示のあいだは作り直さない (アニメーションを続ける)
+    this.startKey = key;
+    if (!key) {
+      el.innerHTML = '';
+      return;
+    }
+    const lights = [0, 1, 2]
+      .map((i) => `<span class="lamp${go ? ' green' : i < lit ? ' red' : ''}"></span>`)
+      .join('');
+    el.innerHTML = `<div class="lights">${lights}</div><div class="cd${go ? ' go' : ''}">${text}</div>`;
+  }
+
   // 運営の設定を反映する
   setConfig(c: GameConfig): void {
     this.config = c;
@@ -500,10 +529,7 @@ export class UI {
     q('nitrotext').textContent = `${nitro}%`;
     q('dur').classList.toggle('low', ratio < 0.3);
     q('durlabel').textContent = `耐久 ${Math.round(ratio * 100)}%${ratio < 0.3 ? '（危険）' : ''}`;
-    const center = q('center');
-    if (race.phase === 'countdown') center.textContent = String(Math.ceil(race.countdown));
-    else if (race.time < 1) center.textContent = 'GO!';
-    else center.textContent = '';
+    this.showStart(q('center'), race);
     this.hud.querySelector<HTMLElement>('[data-act="camera"]')!.textContent = firstPerson ? '三人称' : '一人称';
   }
 
