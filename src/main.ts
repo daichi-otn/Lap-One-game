@@ -11,7 +11,7 @@ import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
 import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
 import { ACHIEVEMENTS, DAILY_BONUS, todayKey } from './game/rewards';
-import { decorFor, decorationsFor, DEFAULT_CONFIG, eventPrizeMult, GameConfig, loadConfig } from './game/config';
+import { decorFor, decorationsFor, DEFAULT_CONFIG, eventPrizeMult, GameConfig, LimitedItem, loadConfig } from './game/config';
 import {
   ADMIN_ENABLED,
   loadAdmin,
@@ -276,6 +276,25 @@ async function toggleGyro(): Promise<void> {
   }
   storeSettings(settings);
   showSettings();
+}
+
+// 期間限定アイテムを、色の一覧に加える (前に加えたものは外してから、今の設定で入れ直す)
+function applyLimited(items: LimitedItem[]): void {
+  const keep = (list: { id: string }[]) => {
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].id.startsWith('lim-')) list.splice(i, 1);
+  };
+  keep(PAINTS);
+  keep(RIMS);
+  keep(GRIPS);
+  for (const it of items) {
+    const window = { start: it.start, end: it.end };
+    if (it.kind === 'paint') {
+      PAINTS.push({ id: it.id, name: it.name, price: it.price, hue: it.hue ?? 0, dark: it.dark ?? 1, window });
+    } else if (it.kind === 'rim' || it.kind === 'grip') {
+      const color = parseInt((it.color ?? '#888888').replace('#', ''), 16);
+      (it.kind === 'rim' ? RIMS : GRIPS).push({ id: it.id, name: it.name, price: it.price, color, window });
+    }
+  }
 }
 
 // 毎日のボーナス: 1日1回だけ受け取れる
@@ -677,6 +696,7 @@ showMenu();
 // 運営の設定 (config.json) を読み、読めたらタイトルなどを更新する
 void loadConfig().then((c) => {
   config = c;
+  applyLimited(c.limited);
   ui.setConfig(c);
   if (mode === 'screen') showMenu();
 });

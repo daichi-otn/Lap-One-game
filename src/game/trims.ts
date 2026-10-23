@@ -4,6 +4,7 @@ export interface Trim {
   name: string;
   price: number;
   color: number;
+  window?: { start: string; end: string }; // 期間限定: 買える期間
 }
 
 const RIM_NAMES = ['シルバー', 'ガンメタ', 'ブラック', 'ゴールド', 'ブロンズ', 'チタン', 'レッド', 'ブルー', 'グリーン', 'イエロー', 'オレンジ', 'パープル', 'ピンク', 'ホワイト', 'マットブラック', 'クローム', 'ダークレッド', 'スカイブルー', 'ライム', 'チャコール'];

@@ -35,7 +35,21 @@ export interface DecorationConfig {
   courses: string[]; // 対象のコース (空なら全部)
 }
 
+// 期間限定アイテム: ボディの色 (paint)、ホイールの色 (rim)、ハンドルの握りの色 (grip)
+export interface LimitedItem {
+  id: string; // 'lim-' で始める
+  kind: 'paint' | 'rim' | 'grip';
+  name: string;
+  price: number;
+  start: string; // 買える期間 (YYYY-MM-DD)
+  end: string;
+  hue?: number; // ボディの色: 色相 (0〜360)
+  dark?: number; // ボディの色: 明るさ (0.3〜1.8)
+  color?: string; // ホイール・握り: 色 (#RRGGBB)
+}
+
 export interface GameConfig {
+  limited: LimitedItem[];
   globalDecor: CourseDecor; // 全コースの空・霧の色 (コースごとの指定が優先)
   decorations: DecorationConfig[];
   title: { tagline: string; banner: string }; // タイトルのキャッチコピー、上に出す告知 (空なら出さない)
@@ -51,6 +65,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   courseDecor: {},
   globalDecor: {},
   decorations: [],
+  limited: [],
 };
 
 // 設定を読む。読めなければ、既定の設定を使う (ゲームは止めない)
@@ -66,6 +81,7 @@ export async function loadConfig(): Promise<GameConfig> {
       courseDecor: raw.courseDecor ?? {},
       globalDecor: raw.globalDecor ?? {},
       decorations: Array.isArray(raw.decorations) ? raw.decorations : [],
+      limited: Array.isArray(raw.limited) ? raw.limited : [],
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -92,4 +108,9 @@ export function decorFor(config: GameConfig, courseId: string): CourseDecor {
 // そのコースに置く飾り物
 export function decorationsFor(config: GameConfig, courseId: string): DecorationConfig[] {
   return config.decorations.filter((d) => d.enabled && (d.courses.length === 0 || d.courses.includes(courseId)));
+}
+
+// 期間の中にいるか (期間が決まっていないものは、いつでも)
+export function inWindow(w: { start: string; end: string } | undefined, today: string): boolean {
+  return !w || (w.start <= today && today <= w.end);
 }

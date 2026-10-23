@@ -7,6 +7,7 @@ export interface Paint {
   dark: number; // 明るさの倍率 (1 が変えない)
   pattern?: 'stripe' | 'checker' | 'flame'; // 模様 (あれば、ベースの色の上に重ねる)
   accent?: number; // 模様の色
+  window?: { start: string; end: string }; // 期間限定: 買える期間
 }
 
 export const PAINTS: Paint[] = [

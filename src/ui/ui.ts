@@ -3,7 +3,7 @@ import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { CAR_MODELS, carById, mulMods, usedKey, usedPrice } from '../game/cars';
 import { todayKey } from '../game/rewards';
-import { activeEvents, DEFAULT_CONFIG, eventPrizeMult, GameConfig } from '../game/config';
+import { activeEvents, DEFAULT_CONFIG, eventPrizeMult, GameConfig, inWindow } from '../game/config';
 import { PAINTS } from '../game/paints';
 import { GRIPS, RIMS } from '../game/trims';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
@@ -335,27 +335,30 @@ export class UI {
     };
     const carSection = `<section><h3>車種</h3>${CAR_MODELS.map((car) => carRow(car.id, car.name, car.price) + carRow(usedKey(car.id), `${car.name}（中古）`, usedPrice(car.price))).join('')}</section>`;
     // ボディの色
+    const today = todayKey();
     const paintSection = `<section><h3>ボディの色</h3>${PAINTS.map((paint) => {
       const owned = save.ownedPaints.includes(paint.id);
       const equipped = save.equippedPaint === paint.id;
       if (shop ? owned : !owned) return '';
+      if (!owned && !inWindow(paint.window, today)) return '';
       let action = '';
       if (equipped) action = '<span class="tag">塗装中</span>';
       else if (owned) action = `<button class="btn-small" data-act="equip-paint" data-arg="${paint.id}">塗る</button>`;
       else action = priceBtn('buy-paint', paint.id, paint.price, !freeParts && save.coin < paint.price);
-      return `<div class="row"><span>${paint.name}</span>${action}</div>`;
+      return `<div class="row"><span>${paint.name}${paint.window ? ' <span class="tag hot">期間限定</span>' : ''}</span>${action}</div>`;
     }).join('')}</section>`;
     // ホイールの色・ハンドルの握りの色
-    const trimSection = (title: string, list: { id: string; name: string; price: number }[], owned: string[], equipped: string, buyAct: string, equipAct: string, verb: string): string =>
+    const trimSection = (title: string, list: { id: string; name: string; price: number; window?: { start: string; end: string } }[], owned: string[], equipped: string, buyAct: string, equipAct: string, verb: string): string =>
       `<section><h3>${title}</h3>${list
         .map((t) => {
           const has = owned.includes(t.id);
           if (shop ? has : !has) return '';
+          if (!has && !inWindow(t.window, today)) return '';
           let action = '';
           if (equipped === t.id) action = '<span class="tag">付けている</span>';
           else if (has) action = `<button class="btn-small" data-act="${equipAct}" data-arg="${t.id}">${verb}</button>`;
           else action = priceBtn(buyAct, t.id, t.price, !freeParts && save.coin < t.price);
-          return `<div class="row"><span>${t.name}</span>${action}</div>`;
+          return `<div class="row"><span>${t.name}${t.window ? ' <span class="tag hot">期間限定</span>' : ''}</span>${action}</div>`;
         })
         .join('')}</section>`;
     const rimSection = trimSection('ホイールの色', RIMS, save.ownedRims, save.equippedRim, 'buy-rim', 'equip-rim', '付ける');
