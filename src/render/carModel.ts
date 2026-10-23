@@ -43,6 +43,8 @@ export interface Look {
   model?: number; // 車種 (0 が標準)
   paint?: number; // ボディの色 (PAINTS の番号)
   headlight?: number; // ヘッドライトの段階
+  mirror?: number; // サイドミラーの段階
+  plate?: number; // ナンバープレートの段階
   taillight?: number; // テールランプの段階
   rim?: number; // ホイールの色 (RIMS の番号)
   grip?: number; // ハンドルの握りの色 (GRIPS の番号)
@@ -645,6 +647,17 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
     inner.add(r);
     det.lightsRear.push(r);
   }
+  // サイドミラー (両側のドアの前) とナンバープレート (後ろ)
+  const mirrorMat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.mirror, look.mirror ?? 1), roughness: 0.4, metalness: 0.5 });
+  for (const z of [0.42, -0.42]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.07), mirrorMat);
+    m.position.set(-0.42, 0.34, z);
+    inner.add(m);
+  }
+  const plateMat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.plate, look.plate ?? 1), roughness: 0.5 });
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.1, 0.26), plateMat);
+  plate.position.set(0.96, -0.02, 0);
+  inner.add(plate);
   det.hood = hinge.children[0];
   group.userData = {
     body,

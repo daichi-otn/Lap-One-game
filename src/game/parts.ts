@@ -10,7 +10,9 @@ export type Slot =
   | 'handle'
   | 'window'
   | 'headlight'
-  | 'taillight';
+  | 'taillight'
+  | 'mirror'
+  | 'plate';
 
 export interface Mods {
   topSpeed: number;
@@ -58,6 +60,8 @@ export const SLOTS: { id: Slot; name: string }[] = [
   { id: 'window', name: '窓' },
   { id: 'headlight', name: 'ヘッドライト' },
   { id: 'taillight', name: 'テールランプ' },
+  { id: 'mirror', name: 'サイドミラー' },
+  { id: 'plate', name: 'ナンバープレート' },
 ];
 
 interface Tier {
@@ -114,6 +118,14 @@ const SPECS: Record<Slot, { names: string[]; mods: (i: number) => Partial<Mods> 
   },
   headlight: {
     names: ['標準ライト', 'ハロゲン', 'HID (白)', 'LED (白)', 'LED (黄)', 'LED (青白)', 'デイライト付き', 'レーザー風', 'ライトバー', '競技用ライト'],
+    mods: () => ({}),
+  },
+  mirror: {
+    names: ['標準ミラー', '黒いミラー', '白いミラー', '赤いミラー', 'カーボンミラー', '金のミラー', '大型ミラー', 'ミニミラー', '電動ミラー', '競技用ミラー'],
+    mods: () => ({}),
+  },
+  plate: {
+    names: ['標準プレート', '白プレート', '黄プレート', '青プレート', '黒プレート', 'ゴールドプレート', 'カーボンプレート', 'ネオンプレート', '赤プレート', '競技用プレート'],
     mods: () => ({}),
   },
   taillight: {
