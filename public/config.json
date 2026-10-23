@@ -21,7 +21,8 @@
     }
   },
   "globalDecor": {
-    "sky": "#ff6a00"
+    "sky": "#ff6a00",
+    "fog": "#000000"
   },
   "decorations": [
     {
