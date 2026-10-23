@@ -8,12 +8,8 @@ export function buildDecorations(track: Track, list: DecorationConfig[]): THREE.
   const group = new THREE.Group();
   const half = track.course.width / 2;
   const dummy = new THREE.Object3D();
-  // 乱数は種を決めて、毎回同じ並びにする
-  let seed = track.length * 3 + 11;
-  const rnd = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
+  // 置く場所は毎回ランダム (レースのたびに、飾りの場所が変わる)
+  const rnd = Math.random;
   const clear = (x: number, z: number, r: number): boolean => {
     const lim = r * r;
     for (const q of track.pts) {
