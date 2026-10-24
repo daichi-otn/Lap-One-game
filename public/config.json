@@ -11,7 +11,7 @@
       "end": "2026-10-31",
       "courses": [],
       "prizeMult": 1.5,
-      "enabled": true
+      "enabled": false
     }
   ],
   "courseTags": {},
