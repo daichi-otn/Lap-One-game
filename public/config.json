@@ -9,9 +9,11 @@
       "name": "ハロウィンイベント",
       "start": "2026-10-01",
       "end": "2026-10-31",
+      "startTime": "00:00",
+      "endTime": "23:59",
       "courses": [],
       "prizeMult": 1.5,
-      "enabled": false
+      "enabled": true
     }
   ],
   "courseTags": {},
