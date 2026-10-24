@@ -455,7 +455,7 @@ function startRace(c: Course): void {
   world.setTrack(track);
   world.setWeather(WEATHER[weather], playerMods.vision);
   world.setDecor(decorFor(config, c.id));
-  world.setDecorations(decorationsFor(config, c.id));
+  world.setDecorations(decorationsFor(config, c.id), config.customDecor);
   world.setCars(race.cars);
   sound.startRace(WEATHER[weather].rain);
   lastPitStops = 0;
@@ -687,7 +687,7 @@ createFixedStepLoop(
       world.frame(vdt, race.player, false, t);
       world.render();
     } else if (race && (mode === 'race' || mode === 'result')) {
-      world.frame(vdt, race.player, firstPerson);
+      world.frame(vdt, race.player, firstPerson, undefined, race.spotlight);
       if (mode === 'race') ui.updateHud(race, firstPerson);
       world.render();
     }

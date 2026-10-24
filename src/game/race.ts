@@ -37,7 +37,13 @@ export class Race {
   private impactCars: CarState[] = [];
   pitStops = 0; // ピットに入った回数 (画面の表示に使う)
   private inPit = false;
+  spotlight: CarState | null = null; // ドローンのカメラで追う車 (復帰した CPU)
+  private spotlightUntil = 0;
   static readonly PIT_SECONDS = 60; // ピットの時間 (ゲーム内の時間)
+  static readonly RESPAWN_SECONDS = 3; // 大破した CPU が復帰するまでの時間
+  static readonly CHASE_GAP = 40; // 復帰するとき、1位の車の何m後ろに戻すか
+  static readonly CHASE_BOOST = 1.08; // 追い上げ中の CPU の速度の倍率
+  static readonly SPOTLIGHT_SECONDS = 6; // 復帰した CPU を、ドローンで追う時間
 
   private autoDrive: boolean;
   lastPitBill = { damage: 0, nitro: 0 }; // 直近のピットの作業量 (0〜1 の損傷、ニトロの減り)
@@ -89,12 +95,21 @@ export class Race {
 
     this.time += dt;
     this.env.time = this.time;
+    if (this.spotlight && (this.time >= this.spotlightUntil || this.spotlight.finished)) this.spotlight = null;
     const laps = this.track.course.laps * this.track.length;
 
     for (const car of this.cars) {
+      if (car.dnf && car.respawnAt !== undefined && this.time >= car.respawnAt) this.respawn(car);
+    }
+
+    for (const car of this.cars) {
       if (car.dnf || car.finished) continue;
-      const ci = car.isPlayer ? (this.autoDrive ? this.autoPedals(car, input) : input) : aiInput(car, this.track, this.player);
+      const ci = car.isPlayer ? (this.autoDrive ? this.autoPedals(car, input) : input) : aiInput(car, this.track, this.player, car.chasing);
       this.damage(car, stepCar(car, ci, dt, this.env, this.track));
+      if (car.chasing) {
+        const lead = this.leaderOf(car);
+        if (!lead || car.dist >= lead.dist) car.chasing = false;
+      }
       if (car.wallImpact) {
         this.impacts.push(car.wallImpact);
         this.impactCars.push(car);
@@ -182,7 +197,45 @@ export class Race {
       car.durability = 0;
       car.dnf = true;
       car.speed = 0;
+      // CPU は少しして、1位の車の後ろから復帰して追いかける
+      if (!car.isPlayer) car.respawnAt = this.time + Race.RESPAWN_SECONDS;
     }
+  }
+
+  // 1位の車 (自分以外で、まだ走っている車のうち先頭)
+  private leaderOf(car: CarState): CarState | undefined {
+    return this.ranking().find((c) => c !== car && !c.dnf && !c.finished);
+  }
+
+  // 大破した CPU を、1位の車の少し後ろに戻す (耐久は全快、追い上げの状態になる)
+  private respawn(car: CarState): void {
+    const lead = this.leaderOf(car);
+    if (!lead) return;
+    const t = this.track;
+    const L = t.length;
+    const s = ((((lead.dist - Race.CHASE_GAP) % L) + L) % L);
+    let idx = 0;
+    while (idx < SAMPLES - 1 && t.cum[idx + 1] <= s) idx++;
+    const p = t.pts[idx];
+    const tan = tangentAt(t.pts, idx);
+    car.x = p.x - tan.z * car.lane;
+    car.z = p.z + tan.x * car.lane;
+    car.heading = Math.atan2(tan.x, tan.z);
+    car.prevS = t.cum[idx];
+    car.dist = lead.dist - Race.CHASE_GAP;
+    car.speed = 0;
+    car.dnf = false;
+    car.respawnAt = undefined;
+    car.chasing = true;
+    this.spotlight = car;
+    this.spotlightUntil = this.time + Race.SPOTLIGHT_SECONDS;
+    car.durability = car.maxDurability;
+    car.stalled = false;
+    car.stalledFor = 0;
+    car.rpm = 900;
+    car.gear = 0;
+    car.shiftTimer = 0;
+    car.hitCooldown = 1;
   }
 
   private collide(dt: number): void {
@@ -282,7 +335,7 @@ function makeCar(
 }
 
 // CPU の運転: 先の中心線を狙い、コーナーの上限速度に合わせてアクセル/ブレーキ
-function aiInput(car: CarState, track: Track, player: CarState): CarInput {
+function aiInput(car: CarState, track: Track, player: CarState, chasing = false): CarInput {
   // 攻撃的な CPU は、少し前にいるプレイヤーの車に寄せて、妨害する (ぶつかることもある)
   const gap = player.dist - car.dist;
   if (car.aggression > 0.4 && !player.dnf && !player.finished && gap > 0 && gap < 30) {
@@ -305,7 +358,8 @@ function aiInput(car: CarState, track: Track, player: CarState): CarInput {
   const desired = Math.atan2(tx - car.x, tz - car.z);
   const diff = wrapAngle(desired - car.heading);
   const steer = Math.max(-1, Math.min(1, -diff * 2.2));
-  const target = track.maxSpeed[near] * car.aiFactor * (Math.abs(diff) > 0.5 ? 0.9 : 1);
+  const pace = car.aiFactor * (chasing ? Race.CHASE_BOOST : 1);
+  const target = track.maxSpeed[near] * pace * (Math.abs(diff) > 0.5 ? 0.9 : 1);
 
   // 直線で、ゲージが十分にあれば、ニトロを使う (加速が必要なとき)
   const straight = Math.abs(steer) < 0.15 && Math.abs(diff) < 0.2;

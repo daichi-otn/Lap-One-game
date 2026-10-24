@@ -97,6 +97,8 @@ export interface CarState {
   hitCooldown: number;
   prevS: number;
   dist: number; // スタートからの走行距離
+  respawnAt?: number; // CPU が大破した後、この時刻に復帰する (プレイヤーは復帰しない)
+  chasing?: boolean; // 復帰した CPU が、1位の車を追っている間
   finished: boolean;
   wallImpact?: Impact; // 今フレームで壁にぶつかった場所 (へこみの表示に使う)
   boosting: boolean; // ニトロ中 (マフラーから炎を出す)

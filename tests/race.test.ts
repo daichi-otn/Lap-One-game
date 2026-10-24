@@ -33,14 +33,14 @@ describe('race simulation', () => {
       keepPlayerClear();
       const dt = 1 / 60;
       let guard = 0;
-      while (!race.cars.every((c) => c.finished || c.dnf) && guard++ < 60 * 900) {
+      while (!race.cars.every((c) => c.finished || c.dnf) && guard++ < 60 * 1500) {
         race.update(dt, { steer: 0, gas: false, brake: false });
         race.player.durability = Number.MAX_SAFE_INTEGER;
         keepPlayerClear();
       }
       const ai = race.cars.filter((c) => !c.isPlayer);
       expect(ai.filter((c) => c.finished).length).toBeGreaterThanOrEqual(2);
-    });
+    }, 60000);
   }
 
   it('player who crashes is disqualified and the race ends as dnf', () => {

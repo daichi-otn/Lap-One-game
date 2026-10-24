@@ -13,6 +13,9 @@ export interface Course {
   weather: Partial<Record<Weather, number>>; // 天候の出現重み
 }
 
+// 周回数は難易度から決めるので、定義では書かない
+type CourseDef = Omit<Course, 'laps'>;
+
 // 星形の多角形 (角度順に点を置くので自己交差しない)
 function radial(radii: number[], stretchX = 1): [number, number][] {
   return radii.map((r, i) => {
@@ -21,14 +24,13 @@ function radial(radii: number[], stretchX = 1): [number, number][] {
   });
 }
 
-export const COURSES: Course[] = [
+const DEFS: CourseDef[] = [
   {
     id: 'easy',
     name: 'ゆるやかな楕円',
     difficulty: '初級',
     points: radial(Array(16).fill(260), 1.5),
     width: 21,
-    laps: 2,
     prizeMult: 1,
     ground: 0x3a7d44,
     weather: { sunny: 5, cloudy: 3, rain: 2 },
@@ -39,7 +41,6 @@ export const COURSES: Course[] = [
     difficulty: '上級',
     points: radial([240, 170, 300, 190, 320, 150, 280, 200, 300, 170, 260, 160, 320, 190, 280, 220]),
     width: 18,
-    laps: 2,
     prizeMult: 1.2,
     ground: 0x5b7f3a,
     weather: { cloudy: 2, rain: 4, storm: 2 },
@@ -50,7 +51,6 @@ export const COURSES: Course[] = [
     difficulty: '上級',
     points: radial([460, 460, 460, 460, 460, 150, 460, 460, 460, 150]),
     width: 18,
-    laps: 2,
     prizeMult: 1.5,
     ground: 0x8a7b52,
     weather: { sunny: 3, fog: 3, rain: 2 },
@@ -61,7 +61,6 @@ export const COURSES: Course[] = [
     difficulty: '中級',
     points: radial([380, 420, 360, 440, 380, 300, 400, 430, 360, 420, 390, 320, 410, 370, 440, 380, 350, 410, 430, 340]),
     width: 21,
-    laps: 2,
     prizeMult: 1.3,
     ground: 0x2f6f5a,
     weather: { sunny: 3, cloudy: 3, rain: 2, fog: 1 },
@@ -72,7 +71,6 @@ export const COURSES: Course[] = [
     difficulty: '上級',
     points: radial([240, 289, 310, 289, 240, 191, 170, 191, 240, 289, 310, 289, 240, 191, 170, 191, 240, 289, 310, 289, 240, 191, 170, 191]),
     width: 16,
-    laps: 2,
     prizeMult: 1.6,
     ground: 0x5a5a4a,
     weather: { cloudy: 3, rain: 3, storm: 2, fog: 2 },
@@ -83,7 +81,6 @@ export const COURSES: Course[] = [
     difficulty: '中級',
     points: radial([420, 420, 420, 420, 300, 220, 180, 220, 300, 380, 420, 400, 340, 260, 300, 380, 420, 380, 320, 240, 200, 240, 300, 380], 1.4),
     width: 20,
-    laps: 2,
     prizeMult: 1.1,
     ground: 0x2d5a6b,
     weather: { sunny: 3, cloudy: 2, rain: 2 },
@@ -94,7 +91,6 @@ export const COURSES: Course[] = [
     difficulty: '上級',
     points: radial([200, 320, 200, 320, 200, 320, 200, 320, 200, 320, 200, 320, 200, 320, 200, 320], 1.0),
     width: 14,
-    laps: 2,
     prizeMult: 1.7,
     ground: 0x4a5a3a,
     weather: { cloudy: 2, rain: 3, fog: 2 },
@@ -105,7 +101,6 @@ export const COURSES: Course[] = [
     difficulty: '中級',
     points: radial([330, 330, 300, 330, 330, 330, 300, 330, 330, 330, 300, 330], 2.0),
     width: 24,
-    laps: 2,
     prizeMult: 1.3,
     ground: 0x4a6b3a,
     weather: { sunny: 4, cloudy: 2 },
@@ -116,7 +111,6 @@ export const COURSES: Course[] = [
     difficulty: '上級',
     points: radial([260, 260, 140, 260, 260, 140, 260, 260, 140, 260, 260, 160, 260, 260, 150, 260, 260, 140, 260, 260, 160, 260, 260, 140], 1.2),
     width: 16,
-    laps: 2,
     prizeMult: 1.4,
     ground: 0x3b3b44,
     weather: { rain: 2, storm: 2, fog: 1 },
@@ -127,20 +121,58 @@ export const COURSES: Course[] = [
     difficulty: '中級',
     points: radial(Array.from({ length: 30 }, (_, i) => 240 + 60 * Math.sin(i * 1.3)), 1.1),
     width: 18,
-    laps: 2,
     prizeMult: 1.5,
     ground: 0x2f4d2a,
     weather: { cloudy: 3, rain: 2, fog: 2 },
   },
+  {
+    id: 'chicane',
+    name: 'シケイン連続',
+    difficulty: '中級',
+    points: radial([300, 210, 300, 210, 300, 210, 300, 210, 300, 210, 300, 210, 300, 210, 300, 210]),
+    width: 18,
+    prizeMult: 1.2,
+    ground: 0x6b6b3a,
+    weather: { sunny: 3, cloudy: 2, rain: 2 },
+  },
+  {
+    id: 'drag-strip',
+    name: 'ドラッグストリップ',
+    difficulty: '初級',
+    points: radial([220, 220, 220, 220, 220, 220, 220, 220], 2.2),
+    width: 22,
+    prizeMult: 1,
+    ground: 0x6e6e6e,
+    weather: { sunny: 5, cloudy: 2 },
+  },
+  {
+    id: 'double-hairpin',
+    name: 'ダブルヘアピン',
+    difficulty: '中級',
+    points: radial([360, 360, 360, 360, 130, 360, 360, 360, 360, 360, 360, 130, 360, 360, 360, 360]),
+    width: 17,
+    prizeMult: 1.3,
+    ground: 0x4f6b2f,
+    weather: { cloudy: 3, rain: 3, fog: 1 },
+  },
+  {
+    id: 'spiral',
+    name: 'スパイラル渓谷',
+    difficulty: '上級',
+    points: radial(Array.from({ length: 16 }, (_, i) => 440 - i * 18)),
+    width: 16,
+    prizeMult: 1.5,
+    ground: 0x5e4a3a,
+    weather: { cloudy: 2, rain: 3, storm: 2, fog: 1 },
+  },
 ];
 
-COURSES.push({
+DEFS.push({
   id: 'premium',
   name: 'プレミアム・ナイトサーキット',
   difficulty: '上級',
   points: radial([420, 300, 460, 320, 440, 280, 400, 340, 470, 300, 430, 290], 1.2),
   width: 20,
-  laps: 2,
   prizeMult: 2.5,
   entryFee: 5000,
   ground: 0x2a2f3a,
@@ -170,7 +202,7 @@ const WEATHERS: Course['weather'][] = [
   { sunny: 3, fog: 2, rain: 1 },
 ];
 
-function makeCourse(k: number): Course {
+function makeCourse(k: number): CourseDef {
   const r = rng(1000 + k * 7919);
   const n = 18 + Math.floor(r() * 12); // 制御点の数
   const base = 240 + r() * 100;
@@ -204,7 +236,6 @@ function makeCourse(k: number): Course {
     difficulty,
     points: radial(radii, 1.0 + r() * 0.6),
     width: 14 + Math.floor(r() * 11),
-    laps: 2,
     prizeMult,
     ground: GROUND[k % GROUND.length],
     weather: WEATHERS[k % WEATHERS.length],
@@ -212,7 +243,11 @@ function makeCourse(k: number): Course {
 }
 
 // 追加のコース (自動で作ったもの)
-for (let k = 0; k < 30; k++) COURSES.push(makeCourse(k));
+for (let k = 0; k < 30; k++) DEFS.push(makeCourse(k));
+
+// 周回数は難易度で決める (初級 2 / 中級 3 / 上級 5)
+const LAPS: Record<string, number> = { 初級: 2, 中級: 3, 上級: 5 };
+export const COURSES: Course[] = DEFS.map((d) => ({ ...d, laps: LAPS[d.difficulty] ?? 2 }));
 
 export function findCourse(id: string | undefined): Course | undefined {
   return COURSES.find((c) => c.id === id);

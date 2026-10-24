@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Track } from '../game/track';
 import { RAIL_GAP, SAMPLES, pitLaneOffset, tangentAt } from '../game/track';
 import { REDLINE_RPM, type CarState } from '../game/car';
-import type { DecorationConfig } from '../game/config';
+import type { CustomDecor, DecorationConfig } from '../game/config';
 import { buildDecorations } from './decor';
 import { Particles, fireTexture, smokeTexture } from './effects';
 import type { WeatherEffect } from '../game/weather';
@@ -187,6 +187,7 @@ export class World {
   private trackPts: THREE.Vector3[] = [];
   private currentTrack: Track | null = null;
   private decorList: DecorationConfig[] = [];
+  private customDecor: CustomDecor[] = [];
   private decorGroup: THREE.Group | null = null;
   private trackWidth = 20;
   private exploded = new Set<CarState>();
@@ -200,6 +201,8 @@ export class World {
   private camPos = new THREE.Vector3();
   private snap = true;
   private lastFirstPerson = false;
+  private lastDrone: CarState | null = null; // 直前のフレームでドローンが追っていた車
+  private droneTime = 0; // ドローンの左右の振れ (秒)
   private view: FirstPersonView = { ...DEFAULT_VIEW };
   private wheelOffset: WheelOffset = { ...DEFAULT_WHEEL };
 
@@ -234,8 +237,9 @@ export class World {
   }
 
   // 飾り物 (ハロウィンなど)。コースに合わせて並べ直す
-  setDecorations(list: DecorationConfig[]): void {
+  setDecorations(list: DecorationConfig[], customs: CustomDecor[] = []): void {
     this.decorList = list;
+    this.customDecor = customs;
     this.rebuildDecorations();
   }
 
@@ -243,7 +247,7 @@ export class World {
     if (this.decorGroup) this.scene.remove(this.decorGroup);
     this.decorGroup = null;
     if (!this.currentTrack || this.decorList.length === 0) return;
-    this.decorGroup = buildDecorations(this.currentTrack, this.decorList);
+    this.decorGroup = buildDecorations(this.currentTrack, this.decorList, this.customDecor);
     this.scene.add(this.decorGroup);
   }
 
@@ -535,7 +539,8 @@ export class World {
 
   // 毎フレーム: 車の位置・カメラ・雨を更新
   // orbit: ゴール後のリプレイ中は、経過秒数を渡す (ドローン風に車の周りを回る)
-  frame(dt: number, player: CarState, firstPerson: boolean, orbit?: number): void {
+  // drone: 大破から復帰して追い上げる CPU を、ドローンで後ろから追う (あれば、自分の視点より優先する)
+  frame(dt: number, player: CarState, firstPerson: boolean, orbit?: number, drone?: CarState | null): void {
     for (const [car, group] of this.cars) {
       // 耐久が 0 になった車は爆発して消える (自分も CPU も同じ)
       // エンストで失格した車は爆発せず、そのまま止まる
@@ -545,6 +550,11 @@ export class World {
         this.explosions.push(boom);
         this.scene.add(boom.group);
         group.visible = false;
+      }
+      // 大破した CPU が復帰したら、車を見せ直す
+      if (!car.dnf && this.exploded.has(car)) {
+        this.exploded.delete(car);
+        group.visible = true;
       }
       group.position.set(car.x, 0, car.z);
       group.rotation.set(0, car.heading, 0);
@@ -641,6 +651,19 @@ export class World {
       this.camera.lookAt(player.x, 1.0, player.z);
       this.camPos.copy(this.camera.position);
     }
+    if (drone) {
+      // ドローン風の追跡: 車の後ろの上から、ゆっくり左右に振りながら追う
+      this.droneTime += dt;
+      const a = drone.heading + Math.PI + Math.sin(this.droneTime * 0.6) * 0.6;
+      const r = 14;
+      const h = 5.5;
+      const desired = new THREE.Vector3(drone.x + Math.sin(a) * r, h, drone.z + Math.cos(a) * r);
+      if (!this.lastDrone) this.camPos.copy(desired);
+      else this.camPos.lerp(desired, 1 - Math.exp(-4 * dt));
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(drone.x, 1.0, drone.z);
+    }
+    this.lastDrone = drone ?? null;
 
     this.sun.position.set(player.x + 40, 80, player.z + 30);
     this.sun.target.position.set(player.x, 0, player.z);
