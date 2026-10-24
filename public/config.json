@@ -43,7 +43,7 @@
       "id": "d2",
       "kind": "bat",
       "enabled": true,
-      "density": 10000,
+      "density": 100,
       "courses": []
     }
   ],
