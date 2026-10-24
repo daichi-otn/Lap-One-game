@@ -10,6 +10,7 @@ import { entryFee, payout } from './game/economy';
 import { CAR_MODELS, carById, carIndex, mulMods, usedKey } from './game/cars';
 import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
+import { GHOST_STEP, ghostPose, ghostTimeAtDist, loadGhosts, storeGhost, type Ghost } from './game/ghost';
 import { ACHIEVEMENTS, DAILY_BONUS, nowKey, todayKey } from './game/rewards';
 import { decorFor, decorationsFor, DEFAULT_CONFIG, eventPrizeMult, GameConfig, inWindow, LimitedItem, loadConfig } from './game/config';
 import {
@@ -62,6 +63,8 @@ let weather: Weather = 'sunny';
 let feePaid = 0;
 let testDrive = false; // 今のレースが試乗か (ショップの車を試す)
 let timeAttack = false; // 今のレースがタイムアタックか (一人で走って、ベストを狙う)
+let ghostRun: number[] = []; // タイムアタックで、いまの走りの記録 (4 つずつ: x, z, heading, dist)
+let activeGhost: Ghost | null = null; // 重ねて走るベストの走り (なければ null)
 // 試乗の構成 (買う前に選んだ車と部品・塗装)。試乗が終わるまで保つ
 interface Trial {
   carId: string;
@@ -78,7 +81,7 @@ let replayAt = 0; // リプレイを流し始めた時刻 (完走のあと、少
 let finishAt = 0; // ゴールした時刻 (FINISH の表示を出した時刻)
 const FINISH_HOLD_MS = 2200; // FINISH を見せてから、リプレイに移るまで
 // リプレイ: 走行中の車の位置を一定間隔で記録し、ゴール後に速めの速さで流す
-const REC_STEP = 0.1; // 記録の間隔 (秒)
+const REC_STEP = GHOST_STEP; // 記録の間隔 (秒)
 const REPLAY_RATE = 2; // リプレイの速さ (実時間の何倍)
 let recording: Float32Array[] = []; // 各時刻の [x, z, heading] (車の順)
 let recTimer = 0;
@@ -479,6 +482,9 @@ function startRace(c: Course, drive?: Trial, solo = false): void {
   feePaid = fee;
   testDrive = test;
   timeAttack = solo;
+  ghostRun = [];
+  activeGhost = solo ? (loadGhosts()[c.id] ?? null) : null;
+  world.setGhost(activeGhost ? activeGhost.look : null);
 
   course = c;
   const dev = ADMIN_ENABLED;
@@ -552,7 +558,11 @@ function finishRace(): void {
     const ok = outcome !== 'dnf' && t !== undefined;
     const before = save.bestTime[course.id];
     const record = ok && (before === undefined || t < before);
-    if (record) save.bestTime[course.id] = t;
+    if (record) {
+      save.bestTime[course.id] = t;
+      // 新記録の走りを、次のゴーストにする
+      storeGhost(course.id, { time: t, look: carLook(), frames: ghostRun });
+    }
     storeSave(save);
     ui.showTimeAttackResult({
       courseId: course.id,
@@ -779,6 +789,7 @@ createFixedStepLoop(
         if (recTimer >= REC_STEP) {
           recTimer -= REC_STEP;
           record(race);
+          if (timeAttack) ghostRun.push(race.player.x, race.player.z, race.player.heading, race.player.dist);
         }
       }
       race.update(dt, controls);
@@ -826,6 +837,16 @@ createFixedStepLoop(
     if (mode === 'preview' && previewRace) {
       world.frame(vdt, previewRace.player, true);
       world.render();
+    }
+    // ゴーストは、タイムアタックのレース中だけ重ねる
+    if (race && mode === 'race' && timeAttack && activeGhost && replayAt === 0) {
+      const elapsed = race.time + Race.COUNTDOWN_SECONDS;
+      world.setGhostPose(ghostPose(activeGhost.frames, elapsed));
+      const at = ghostTimeAtDist(activeGhost.frames, race.player.dist);
+      ui.setGhostGap(race.phase === 'running' && at !== null ? elapsed - at : null);
+    } else {
+      world.setGhostPose(null);
+      ui.setGhostGap(null);
     }
     if (race && mode === 'race' && replayAt > 0) {
       // ゴール後のリプレイ: スタートからの走りを、ドローンで追う

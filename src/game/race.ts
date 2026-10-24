@@ -24,12 +24,13 @@ const HIT_COOLDOWN = 0.5;
 const INSTANT_KO_SPEED = 200 / 3.6;
 
 export class Race {
+  static readonly COUNTDOWN_SECONDS = 3; // スタート前のカウントダウン (秒)
   readonly track: Track;
   readonly env: Env;
   readonly cars: CarState[];
   readonly player: CarState;
   time = 0;
-  countdown = 3;
+  countdown = Race.COUNTDOWN_SECONDS;
   phase: 'countdown' | 'running' | 'finished' = 'countdown';
   outcome: Outcome | null = null;
   private finishCount = 0;

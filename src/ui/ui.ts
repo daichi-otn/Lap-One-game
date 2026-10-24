@@ -95,6 +95,7 @@ export class UI {
           <div class="chip" data-hud="lap"></div>
           <div class="chip" data-hud="pos"></div>
           <div class="chip" data-hud="time"></div>
+          <div class="chip" data-hud="ghost" hidden></div>
           <button class="chip btn-small" data-act="camera">視点</button>
         </div>
         <div class="center" data-hud="center"></div>
@@ -629,6 +630,16 @@ export class UI {
         <button class="btn big" data-act="race">もう一度（コース選択）</button>
         <button class="btn big" data-act="menu">メニューへ</button>
       </div>`);
+  }
+
+  // ゴーストとの差 (秒)。正なら自分がゴーストより遅い。null で隠す
+  setGhostGap(diff: number | null): void {
+    const el = this.hud.querySelector<HTMLElement>('[data-hud="ghost"]');
+    if (!el) return;
+    el.hidden = diff === null;
+    if (diff === null) return;
+    el.textContent = `ゴースト ${diff >= 0 ? '+' : ''}${diff.toFixed(1)} 秒`;
+    el.classList.toggle('ahead', diff < 0);
   }
 
   showHud(): void {

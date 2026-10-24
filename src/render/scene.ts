@@ -184,6 +184,7 @@ export class World {
   private rain: THREE.LineSegments | null = null;
   private rainOffsets = new Float32Array(0);
   private cars = new Map<CarState, THREE.Group>();
+  private ghost: THREE.Group | null = null;
   private trackPts: THREE.Vector3[] = [];
   private currentTrack: Track | null = null;
   private decorList: DecorationConfig[] = [];
@@ -286,6 +287,46 @@ export class World {
     this.scene.fog = new THREE.Fog(w.sky, w.fogNear, w.fogFar * vision);
     this.sun.intensity = 1.6 - 0.9 * w.rain;
     this.buildRain(w.rain);
+  }
+
+  // ゴースト: ベストの走りを、半透明の車で重ねて見せる (null で消す)
+  setGhost(look: Record<string, number> | null): void {
+    this.ghost?.removeFromParent();
+    this.ghost = null;
+    if (!look) return;
+    const group = new THREE.Group();
+    group.visible = false;
+    this.ghost = group;
+    this.scene.add(group);
+    void loadCarTemplate().then((template) => {
+      if (this.ghost !== group) return;
+      const inst = instantiateCar(template, look);
+      inst.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = false;
+        // 半透明にする (テンプレートの材質は他の車と共有しているので、複製してから変える)
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        const cloned = mats.map((m) => {
+          const c = m.clone();
+          c.transparent = true;
+          c.opacity = 0.35;
+          c.depthWrite = false;
+          return c;
+        });
+        mesh.material = Array.isArray(mesh.material) ? cloned : cloned[0];
+      });
+      group.add(inst);
+    });
+  }
+
+  // ゴーストの位置と向き (null なら隠す)
+  setGhostPose(pose: { x: number; z: number; heading: number } | null): void {
+    if (!this.ghost) return;
+    this.ghost.visible = pose !== null;
+    if (!pose) return;
+    this.ghost.position.set(pose.x, 0, pose.z);
+    this.ghost.rotation.set(0, pose.heading, 0);
   }
 
   setCars(cars: CarState[]): void {
