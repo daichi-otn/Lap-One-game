@@ -2,8 +2,8 @@ import { COURSES, type Course } from '../game/courses';
 import { entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { CAR_MODELS, carById, mulMods, usedKey, usedPrice } from '../game/cars';
-import { todayKey } from '../game/rewards';
-import { activeEvents, DEFAULT_CONFIG, eventPrizeMult, GameConfig, inWindow } from '../game/config';
+import { nowKey, todayKey } from '../game/rewards';
+import { activeEvents, DEFAULT_CONFIG, eventPrizeMult, GameConfig, inWindow, upcomingEvent } from '../game/config';
 import { PAINTS } from '../game/paints';
 import { GRIPS, RIMS } from '../game/trims';
 import { ADMIN_ENABLED, type AdminSettings, type FirstPersonView, type Quality, type SaveData, type Settings, type WheelOffset } from '../game/save';
@@ -31,6 +31,15 @@ export interface GarageOptions {
   look: Record<string, number>; // 装着中のパーツの段階 (見た目)
   mode: 'shop' | 'garage'; // ショップ (買う) かガレージ (乗り換え・装着)
   category: string; // ショップで選んでいる分類 (空ならカテゴリーの一覧)
+}
+
+// 試乗の構成: 買う前に、部品・塗装を選んで試せる (買っていない部品も使える)
+export interface TrialOptions {
+  carName: string;
+  color: number;
+  mods: Mods;
+  look: Record<string, number>;
+  rows: { id: string; label: string; name: string }[]; // 部品・塗装 (id は ◀ ▶ で選ぶときの入れ替え先)
 }
 
 // 起動時のロゴ画面。数秒で消えるか、タップで飛ばせる
@@ -169,7 +178,8 @@ export class UI {
         <div class="checker"></div>
         <p class="tagline">${this.config.title.tagline}</p>
         ${this.config.title.banner ? `<div class="event-banner">${this.config.title.banner}</div>` : ''}
-        ${activeEvents(this.config, todayKey()).map((e) => `<div class="event-banner">開催中: ${e.name}（賞金 ×${e.prizeMult}）</div>`).join('')}
+        ${activeEvents(this.config, nowKey()).map((e) => `<div class="event-banner">開催中: ${e.name}（賞金 ×${e.prizeMult}）</div>`).join('')}
+        ${countdownHtml(this.config, todayKey())}
       </div>
       <div class="title-card">
         <div><span class="muted">乗車中</span><b>${carById(save.equippedCar).name}</b></div>
@@ -178,6 +188,7 @@ export class UI {
       </div>
       <div class="menu">
         <button class="btn big race-btn" data-act="race">レースに出る</button>
+        <button class="btn big" data-act="ta-list">タイムアタック</button>
         ${save.lastBonus !== todayKey() ? '<button class="btn big" data-act="daily">デイリーボーナスを受け取る</button>' : ''}
         <button class="btn big" data-act="shop">ショップ</button>
         <button class="btn big" data-act="achievements">実績</button>
@@ -297,6 +308,37 @@ export class UI {
       <section>${rows}</section>`);
   }
 
+  // タイムアタック: 一人で走って、コースごとのベストタイムを狙う (参加費なし)
+  showTimeAttack(save: SaveData): void {
+    const rows = COURSES.map(
+      (c) => `<div class="row"><span><b>${c.name}</b><br><span class="muted">${c.difficulty} ・ 周回 ${c.laps} ・ ベスト ${formatBest(save.bestTime[c.id])}</span></span><button class="btn-small" data-act="ta-course" data-arg="${c.id}">走る</button></div>`,
+    ).join('');
+    this.setScreen(`
+      <div class="topbar"><button class="btn-small" data-act="menu">戻る</button></div>
+      <h2>タイムアタック</h2>
+      <p class="note">一人で走ります。参加費も賞金もありません。ベストタイムを更新しよう。</p>
+      <section>${rows}</section>`);
+  }
+
+  // タイムアタックの結果: 今回のタイムと、ベストとの比較
+  showTimeAttackResult(r: { courseId: string; courseName: string; time: number | null; best: number | undefined; record: boolean }): void {
+    const head = r.time === null
+      ? '<h2 class="lose">失格</h2><p class="note">大破したのでタイムは残りません</p>'
+      : `<h2>${r.record ? '新記録！' : 'ゴール'}</h2>`;
+    this.setScreen(`
+      <div class="topbar"><button class="btn-small" data-act="ta-list">コース一覧へ</button></div>
+      <p class="muted">${r.courseName}</p>
+      ${head}
+      <div class="card">
+        <div class="stat"><span>今回</span><b>${r.time === null ? '—' : formatTime(r.time)}</b></div>
+        <div class="stat"><span>ベスト</span><b>${formatBest(r.best)}</b></div>
+      </div>
+      <div class="menu">
+        <button class="btn big race-btn" data-act="ta-course" data-arg="${r.courseId}">もう一度走る</button>
+        <button class="btn big" data-act="ta-list">コースを選び直す</button>
+      </div>`);
+  }
+
   // filter: 難易度で絞る (空なら全部)。上の札で切り替える
   showCourses(save: SaveData, filter = ''): void {
     const levels = ['初級', '中級', '上級'];
@@ -312,7 +354,7 @@ export class UI {
           <div class="course-map">${courseMapSvg(c)}</div>
           <div class="course-info">
           <div class="card-head"><b>${c.name}</b><span class="tag">${c.difficulty}</span>${this.config.courseTags[c.id] ? `<span class="tag hot">${this.config.courseTags[c.id]}</span>` : ''}</div>
-          <div class="muted">周回 ${c.laps} ／ 賞金倍率 ×${c.prizeMult}${eventPrizeMult(this.config, c.id, todayKey()) !== 1 ? ` （開催中のイベントで ×${eventPrizeMult(this.config, c.id, todayKey())}）` : ''}</div>
+          <div class="muted">周回 ${c.laps} ／ 賞金倍率 ×${c.prizeMult}${eventPrizeMult(this.config, c.id, nowKey()) !== 1 ? ` （開催中のイベントで ×${eventPrizeMult(this.config, c.id, nowKey())}）` : ''}</div>
           <div class="muted">天候: ${Object.keys(c.weather).map((w) => weatherLabel(w)).join('・')}</div>
           <div class="best">ベストタイム: ${formatBest(save.bestTime[c.id])}</div>
           <button class="btn" data-act="course" data-arg="${c.id}" ${save.coin < fee ? 'disabled' : ''}>
@@ -421,8 +463,10 @@ export class UI {
       title = `ショップ・${cat?.name ?? ''}`;
       body = `<div class="menu"><button class="btn-small" data-act="shop-cat" data-arg="">カテゴリーへ戻る</button></div>${cat?.html ?? ''}`;
     }
+    // ショップの右上の試乗: 試乗する車を選ぶ画面を開く
+    const trialBtn = shop ? '<button class="btn-small" data-act="trial-list">試乗</button>' : '';
     this.setScreen(`
-      <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
+      <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="topbar-right"><span class="coin">${save.coin.toLocaleString()} coin</span>${trialBtn}</span></div>
       <h2>${title}</h2>
       <div class="garage-layout">
         <div class="garage-list">
@@ -444,6 +488,42 @@ export class UI {
         this.screen.querySelectorAll<HTMLElement>('[data-viewmode]').forEach((b) => b.classList.toggle('on', b === btn));
       });
     });
+  }
+
+  // 試乗する車を選ぶ画面: 車ごとに「構成を決める」へ進む
+  showTrialCars(cars: { id: string; name: string }[]): void {
+    const rows = cars
+      .map((c) => `<div class="row"><span>${c.name}</span><button class="btn-small" data-act="trial-open" data-arg="${c.id}">構成を決める</button></div>`)
+      .join('');
+    this.setScreen(`
+      <div class="topbar"><button class="btn-small" data-act="shop">ショップへ戻る</button></div>
+      <h2>試乗</h2>
+      <p class="note">乗る車を選んで、部品と塗装を決めてから試乗します。試乗は無料です。</p>
+      <section>${rows}</section>`);
+  }
+
+  // 試乗の構成画面: 左で部品を ◀ ▶ で選び、右で車を見る
+  showTrial(opts: TrialOptions): void {
+    const statRows = (Object.keys(opts.mods) as (keyof Mods)[])
+      .map((k) => `<div class="stat"><span>${MOD_NAMES[k]}</span><b>${formatMod(opts.mods[k])}</b></div>`)
+      .join('');
+    const rows = opts.rows
+      .map((r) => `<div class="row"><span>${r.label}</span><span class="trial-pick"><button class="btn-small" data-act="trial-step" data-arg="${r.id}|-1">◀</button><b>${r.name}</b><button class="btn-small" data-act="trial-step" data-arg="${r.id}|1">▶</button></span></div>`)
+      .join('');
+    this.setScreen(`
+      <div class="topbar"><button class="btn-small" data-act="trial-list">試乗の車を選ぶ</button></div>
+      <h2>試乗: ${opts.carName}</h2>
+      <div class="garage-layout">
+        <div class="garage-list">
+          <div class="card"><h3>この構成の性能 (基準 = 100%)</h3><div class="stats">${statRows}</div></div>
+          <section><h3>部品と塗装</h3>${rows}</section>
+          <button class="btn big race-btn" data-act="trial-start">試乗する</button>
+          <p class="note">試乗は無料です。買っていない部品も試せますが、コインは減りません。</p>
+        </div>
+        <div class="garage-view" aria-label="試乗する車" style="height: 42vh"></div>
+      </div>`);
+    const host = this.screen.querySelector<HTMLElement>('.garage-view');
+    if (host) this.stopViewer = startCarViewer(host, opts.color, opts.mods, false, opts.look, '');
   }
 
   showSettings(settings: Settings, admin: AdminSettings): void {
@@ -654,6 +734,13 @@ export class UI {
 }
 
 // オン・オフのスイッチ (ラベルの右にスイッチを置く)
+// タイトル画面: 次のイベントまでのカウントダウン (予定がなければ何も出さない)
+function countdownHtml(config: GameConfig, today: string): string {
+  const next = upcomingEvent(config, today);
+  if (!next) return '';
+  return `<div class="countdown">${next.event.name}まであと <b>${next.days}</b> 日</div>`;
+}
+
 function switchRow(act: string, label: string, on: boolean): string {
   return `<button class="switch-row" data-act="${act}" role="switch" aria-checked="${on}"><span>${label}</span><span class="switch${on ? ' on' : ''}"></span></button>`;
 }

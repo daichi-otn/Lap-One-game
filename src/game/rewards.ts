@@ -1,6 +1,12 @@
 // 遊び続けてもらうための仕組み: 毎日のボーナスと、実績 (達成するとコインがもらえる)
 export const DAILY_BONUS = 500;
 
+// 今の日時 (ローカル時間で、YYYY-MM-DDTHH:MM)。イベントの開始・終了の判定に使う
+export function nowKey(now = new Date()): string {
+  const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  return `${todayKey(now)}T${hm}`;
+}
+
 // 今日の日付 (ローカル時間で、YYYY-MM-DD)
 export function todayKey(now = new Date()): string {
   const y = now.getFullYear();

@@ -402,6 +402,24 @@ export class World {
     void car;
   }
 
+  // 爆発では、部品が前後左右へ勢いよく飛び散る (ボンネット・トランク・ドア・ライト・屋根など)
+  private blowParts(group: THREE.Group, car: CarState): void {
+    // 車体の座標での、前・後ろ・右・左の場所 (detachPart が場所から外れる部品を決める)
+    const spots = [
+      new THREE.Vector3(-0.9, 0.5, 0),
+      new THREE.Vector3(0.9, 0.5, 0),
+      new THREE.Vector3(0, 0.5, 0.4),
+      new THREE.Vector3(0, 0.5, -0.4),
+    ];
+    group.updateMatrixWorld(true);
+    for (let i = 0; i < 6; i++) {
+      const a = Math.random() * Math.PI * 2;
+      // 爆発の中心からの向きとして、ランダムな方向へ飛ばす
+      const impact: Impact = { x: car.x, z: car.z, nx: Math.cos(a), nz: Math.sin(a), strength: 30 };
+      this.detachPart(group, car, spots[i % spots.length], impact);
+    }
+  }
+
   // ライトは左右まとめて外れる (1 つの部品として扱う)
   private takeLights(d: NonNullable<CarParts['detachable']>, key: 'lightsFront' | 'lightsRear'): THREE.Object3D | undefined {
     const list = d[key];
@@ -550,6 +568,7 @@ export class World {
         this.explosions.push(boom);
         this.scene.add(boom.group);
         group.visible = false;
+        this.blowParts(group, car);
       }
       // 大破した CPU が復帰したら、車を見せ直す
       if (!car.dnf && this.exploded.has(car)) {

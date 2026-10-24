@@ -5,13 +5,13 @@ import { COURSES, findCourse, type Course } from './game/courses';
 import { buildTrack } from './game/track';
 import { PLAYER_COLOR, Race } from './game/race';
 import { WEATHER, pickWeather, type Weather } from './game/weather';
-import { NEUTRAL_MODS, PARTS, computeMods, type Mods } from './game/parts';
+import { NEUTRAL_MODS, PARTS, SLOTS, computeMods, type Mods } from './game/parts';
 import { entryFee, payout } from './game/economy';
-import { CAR_MODELS, carById, carIndex, mulMods } from './game/cars';
+import { CAR_MODELS, carById, carIndex, mulMods, usedKey } from './game/cars';
 import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
-import { ACHIEVEMENTS, DAILY_BONUS, todayKey } from './game/rewards';
-import { decorFor, decorationsFor, DEFAULT_CONFIG, eventPrizeMult, GameConfig, LimitedItem, loadConfig } from './game/config';
+import { ACHIEVEMENTS, DAILY_BONUS, nowKey, todayKey } from './game/rewards';
+import { decorFor, decorationsFor, DEFAULT_CONFIG, eventPrizeMult, GameConfig, inWindow, LimitedItem, loadConfig } from './game/config';
 import {
   ADMIN_ENABLED,
   loadAdmin,
@@ -60,6 +60,17 @@ let race: Race | null = null;
 let course: Course | null = null;
 let weather: Weather = 'sunny';
 let feePaid = 0;
+let testDrive = false; // 今のレースが試乗か (ショップの車を試す)
+let timeAttack = false; // 今のレースがタイムアタックか (一人で走って、ベストを狙う)
+// 試乗の構成 (買う前に選んだ車と部品・塗装)。試乗が終わるまで保つ
+interface Trial {
+  carId: string;
+  equipped: SaveData['equipped'];
+  paint: string;
+  rim: string;
+  grip: string;
+}
+let trial: Trial | null = null;
 let lastPitStops = 0;
 let stallShown = false; // エンストの通知を一度だけ出すため
 let dnfAt = 0; // 失格になった時刻 (爆発を見せるため、結果を少し遅らせる)
@@ -230,6 +241,33 @@ function act(name: string, arg?: string): void {
       break;
     case 'buy-car':
       buyCar(arg);
+      break;
+    case 'ta-list':
+      mode = 'screen';
+      ui.showTimeAttack(save);
+      break;
+    case 'ta-course': {
+      const c = findCourse(arg);
+      if (c) startRace(c, undefined, true);
+      break;
+    }
+    case 'trial-list':
+      mode = 'screen';
+      showTrialCars();
+      break;
+    case 'trial-open':
+      openTrial(arg ?? save.equippedCar);
+      break;
+    case 'trial-step':
+      trialStep(arg ?? '');
+      break;
+    case 'trial-start':
+      if (trial) startRace(COURSES[0], trial);
+      break;
+    case 'trial-back':
+      trial = null;
+      mode = 'screen';
+      showTrialCars();
       break;
     case 'equip-car':
       equipCar(arg);
@@ -421,24 +459,33 @@ function viewChange(key: keyof FirstPersonView, value: number): void {
   world.setFirstPersonView(settings.view);
 }
 
-function startRace(c: Course): void {
+// drive: 試乗のときの構成。試乗は参加費も出走数も賞金もなく、CPU もいない
+// solo: タイムアタック (一人で走る。参加費も出走数も賞金もない)
+function startRace(c: Course, drive?: Trial, solo = false): void {
+  const test = drive !== undefined;
   const free = ADMIN_ENABLED && (admin.noEntryFee || admin.infiniteCoin);
   // コースごとの参加費 (初回は無料)
-  const fee = free ? 0 : c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun);
-  if (save.coin < fee) {
-    ui.toast(`コインが足りません（参加費 ${fee.toLocaleString()}）`);
-    return;
+  const fee = test || solo || free ? 0 : c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun);
+  if (!test && !solo) {
+    if (save.coin < fee) {
+      ui.toast(`コインが足りません（参加費 ${fee.toLocaleString()}）`);
+      return;
+    }
+    // 参加費は出走確定時に引き落とす
+    save.coin -= fee;
+    save.racesRun += 1;
+    storeSave(save);
   }
-  // 参加費は出走確定時に引き落とす
-  save.coin -= fee;
-  save.racesRun += 1;
-  storeSave(save);
   feePaid = fee;
+  testDrive = test;
+  timeAttack = solo;
 
   course = c;
   const dev = ADMIN_ENABLED;
   weather = dev && admin.weather !== 'auto' ? admin.weather : pickWeather(c.weather);
-  const playerMods = mulMods(computeMods(save.equipped), carById(save.equippedCar).mods);
+  const driven = drive?.carId ?? save.equippedCar;
+  const equipped = drive?.equipped ?? save.equipped;
+  const playerMods = mulMods(computeMods(equipped), carById(driven).mods);
   const track = buildTrack(c);
   // 開発者モードの値があればそれを使う。通常は設定の値 (公開版でも変えられる)
   const cpuCount = dev ? admin.cpuCount : settings.cpuCount;
@@ -446,9 +493,9 @@ function startRace(c: Course): void {
     track,
     weather,
     playerMods,
-    playerLook: carLook(),
+    playerLook: drive ? trialLook(drive) : carLook(),
     autoDrive: settings.autoDrive,
-    aiMods: makeAiMods(cpuCount),
+    aiMods: test || solo ? [] : makeAiMods(cpuCount),
     aiStrength: dev ? admin.cpuStrength : settings.cpuStrength,
   });
 
@@ -484,10 +531,41 @@ function makeAiMods(count: number): Mods[] {
 
 function finishRace(): void {
   if (!race || !course || mode !== 'race') return;
-  mode = 'result';
   sound.stopRace();
+  // 試乗は結果もコインも残さず、ショップへ戻る
+  if (testDrive) {
+    testDrive = false;
+    trial = null;
+    race = null;
+    mode = 'screen';
+    garageMode = 'shop';
+    showGarage();
+    ui.toast('試乗を終えました');
+    showTrialCars();
+    return;
+  }
+  if (timeAttack) {
+    timeAttack = false;
+    mode = 'result';
+    const outcome = race.outcome ?? 'dnf';
+    const t = race.player.finishTime;
+    const ok = outcome !== 'dnf' && t !== undefined;
+    const before = save.bestTime[course.id];
+    const record = ok && (before === undefined || t < before);
+    if (record) save.bestTime[course.id] = t;
+    storeSave(save);
+    ui.showTimeAttackResult({
+      courseId: course.id,
+      courseName: course.name,
+      time: ok ? t : null,
+      best: save.bestTime[course.id],
+      record,
+    });
+    return;
+  }
+  mode = 'result';
   const outcome = race.outcome ?? 'dnf';
-  const pay = payout(outcome, course.prizeMult * eventPrizeMult(config, course.id, todayKey()));
+  const pay = payout(outcome, course.prizeMult * eventPrizeMult(config, course.id, nowKey()));
   save.coin += pay;
   // 優勝・完走の回数を数えて、実績を確かめる
   if (outcome === 'win') save.wins += 1;
@@ -520,13 +598,82 @@ function finishRace(): void {
 
 // 車種の見た目 (装着中のパーツの段階 + 車種)
 function carLook(): Look & Record<string, number> {
+  return lookFor(save.equippedCar, save.equipped, save.equippedPaint, save.equippedRim, save.equippedGrip);
+}
+
+// 車種と構成から、車の見た目を作る (ガレージも試乗も同じ)
+function lookFor(carId: string, equipped: SaveData['equipped'], paint: string, rim: string, grip: string): Look & Record<string, number> {
   return {
-    ...lookFromEquipped(save.equipped),
-    model: carIndex(save.equippedCar),
-    paint: paintIndex(save.equippedPaint),
-    rim: trimIndex(RIMS, save.equippedRim),
-    grip: trimIndex(GRIPS, save.equippedGrip),
+    ...lookFromEquipped(equipped),
+    model: carIndex(carId),
+    paint: paintIndex(paint),
+    rim: trimIndex(RIMS, rim),
+    grip: trimIndex(GRIPS, grip),
   };
+}
+
+function trialLook(t: Trial): Look & Record<string, number> {
+  return lookFor(t.carId, t.equipped, t.paint, t.rim, t.grip);
+}
+
+// 試乗で選べるもの: 部品はスロットごと、塗装・ホイール・握りは期間内のもの
+function trialList(kind: string): { id: string; name: string }[] {
+  const today = todayKey();
+  if (kind === 'paint') return PAINTS.filter((p) => inWindow(p.window, today)).map((p) => ({ id: p.id, name: p.name }));
+  if (kind === 'rim') return RIMS.filter((r) => inWindow(r.window, today)).map((r) => ({ id: r.id, name: r.name }));
+  if (kind === 'grip') return GRIPS.filter((g) => inWindow(g.window, today)).map((g) => ({ id: g.id, name: g.name }));
+  return PARTS.filter((p) => p.slot === kind).map((p) => ({ id: p.id, name: p.name }));
+}
+
+function trialCurrent(t: Trial, kind: string): string {
+  if (kind === 'paint') return t.paint;
+  if (kind === 'rim') return t.rim;
+  if (kind === 'grip') return t.grip;
+  return t.equipped[kind as keyof typeof t.equipped] ?? '';
+}
+
+// 試乗する車の一覧 (新車と中古車)
+function showTrialCars(): void {
+  const cars = CAR_MODELS.flatMap((c) => [
+    { id: c.id, name: c.name },
+    { id: usedKey(c.id), name: `${c.name}（中古）` },
+  ]);
+  ui.showTrialCars(cars);
+}
+
+// 試乗の構成画面を開く。最初は、乗っている車の構成から始める
+function openTrial(carId: string): void {
+  trial = { carId, equipped: { ...save.equipped }, paint: save.equippedPaint, rim: save.equippedRim, grip: save.equippedGrip };
+  mode = 'screen';
+  showTrialScreen();
+}
+
+function showTrialScreen(): void {
+  if (!trial) return;
+  const t = trial;
+  const mods = mulMods(computeMods(t.equipped), carById(t.carId).mods);
+  const kinds = [...SLOTS.map((s) => ({ id: s.id, label: s.name })), { id: 'paint', label: 'ボディの色' }, { id: 'rim', label: 'ホイール' }, { id: 'grip', label: 'ハンドルの握り' }];
+  const rows = kinds.map((k) => {
+    const list = trialList(k.id);
+    const cur = list.find((x) => x.id === trialCurrent(t, k.id));
+    return { id: k.id, label: k.label, name: cur?.name ?? '—' };
+  });
+  ui.showTrial({ carName: carById(t.carId).name, color: PLAYER_COLOR, mods, look: trialLook(t), rows });
+}
+
+// ◀ ▶ で、部品・塗装を 1 つ前後に変える
+function trialStep(arg: string): void {
+  const [kind, step] = arg.split('|');
+  if (!trial) return;
+  const list = trialList(kind);
+  if (list.length === 0) return;
+  const idx = Math.max(0, list.findIndex((x) => x.id === trialCurrent(trial!, kind)));
+  const next = list[Math.min(list.length - 1, Math.max(0, idx + Number(step)))].id;
+  if (kind === 'paint') trial.paint = next;
+  else if (kind === 'rim') trial.rim = next;
+  else if (kind === 'grip') trial.grip = next;
+  else trial.equipped = { ...trial.equipped, [kind]: next };
+  showTrialScreen();
 }
 
 // ホイールの色・ハンドルの握りの色を買う / 付け替える
