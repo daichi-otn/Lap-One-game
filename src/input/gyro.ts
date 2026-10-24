@@ -48,14 +48,15 @@ export class Gyro {
   }
 
   // ハンドルの切れ具合 (-1 から 1)。右に傾けると正
+  // 端末の回転の向きと画面の向きの組み合わせで、符号が反対になるので、最後に反転する
   steer(): number {
     if (!this.active || this.value === null) return 0;
     if (this.neutral === null) this.neutral = this.value;
     let d = this.value - this.neutral;
     // 360 度でつながる値は、-180〜180 度の差に直す
     if (this.wrapped) d = ((d + 540) % 360) - 180;
-    const sign = Math.sign(d);
+    const sign = -Math.sign(d);
     const amount = Math.max(0, Math.abs(d) - DEAD_DEG) / (FULL_DEG - DEAD_DEG);
-    return Math.max(-1, Math.min(1, sign * amount));
+    return Math.max(-1, Math.min(1, sign * amount)) || 0; // 0 のときに -0 を返さない
   }
 }

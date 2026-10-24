@@ -15,10 +15,10 @@ describe('gyro steering', () => {
     expect(gyroAt(11, 10).steer()).toBe(0);
   });
   it('steers proportionally and clamps to full lock', () => {
-    expect(gyroAt(20, 10).steer()).toBeGreaterThan(0);
-    expect(gyroAt(20, 10).steer()).toBeLessThan(1);
-    expect(gyroAt(60, 10).steer()).toBe(1);
-    expect(gyroAt(-60, 10).steer()).toBe(-1);
+    expect(gyroAt(20, 10).steer()).toBeLessThan(0);
+    expect(gyroAt(20, 10).steer()).toBeGreaterThan(-1);
+    expect(gyroAt(60, 10).steer()).toBe(-1);
+    expect(gyroAt(-60, 10).steer()).toBe(1);
   });
   it('uses the resting pose as neutral', () => {
     expect(gyroAt(50, 50).steer()).toBe(0);
