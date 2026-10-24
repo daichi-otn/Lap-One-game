@@ -29,21 +29,21 @@
       "id": "d0",
       "kind": "pumpkin",
       "enabled": true,
-      "density": 40,
+      "density": 100,
       "courses": []
     },
     {
       "id": "d1",
       "kind": "ghost",
       "enabled": true,
-      "density": 20,
+      "density": 100,
       "courses": []
     },
     {
       "id": "d2",
       "kind": "bat",
       "enabled": true,
-      "density": 30,
+      "density": 10000,
       "courses": []
     }
   ],
