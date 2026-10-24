@@ -47,21 +47,8 @@
       "enabled": true,
       "density": 100,
       "courses": []
-    },
-    {
-      "id": "d3",
-      "kind": "custom:c1792811626909",
-      "enabled": true,
-      "density": 100,
-      "courses": []
     }
   ],
   "limited": [],
-  "customDecor": [
-    {
-      "id": "c1792811626909",
-      "name": "ゴースト",
-      "code": "const g = new THREE.Group();\nconst white = 0xffffff;\n\n// マテリアルを用意しておく（色と光沢を設定）\nfunction mat(color) {\n  return new THREE.MeshPhongMaterial({ color: color, flatShading: true });\n}\n\n// 頭 (上側の小さい球体)\nconst head = new THREE.Mesh(new THREE.SphereGeometry(0.8, 14, 10), mat(white));\nhead.position.y = 3.0; // 少し上に配置\ng.add(head);\n\n// 体のベース (下側の大きい球体)\nconst bodyBase = new THREE.Mesh(new THREE.SphereGeometry(1.2, 14, 10), mat(white));\nbodyBase.position.y = 1.2; // 頭の下に配置\ng.add(bodyBase);\n\n// 鼻 (オレンジの円錐)\nconst nose = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.6, 8), mat(0xff8a1a));\nnose.rotation.x = Math.PI / 2; // X軸を中心に90度回転させて、前を向かせる\nnose.position.set(0, 3.0, 0.85); // 頭の前に配置\ng.add(nose);\n\nreturn g;"
-    }
-  ]
+  "customDecor": []
 }
