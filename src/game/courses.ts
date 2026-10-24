@@ -36,7 +36,7 @@ export const COURSES: Course[] = [
   {
     id: 'technical',
     name: 'テクニカルサーキット',
-    difficulty: '中級',
+    difficulty: '上級',
     points: radial([240, 170, 300, 190, 320, 150, 280, 200, 300, 170, 260, 160, 320, 190, 280, 220]),
     width: 18,
     laps: 2,
