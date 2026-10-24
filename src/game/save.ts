@@ -76,6 +76,7 @@ export interface Settings {
   quality: Quality;
   sound: boolean;
   gyro: boolean; // スマホを傾けてハンドル操作
+  gyroSens: number; // ジャイロの感度 (1 が標準。大きいほど、少しの傾きで大きく切れる)
   view: FirstPersonView;
   wheel: WheelOffset;
   autoDrive: boolean; // ハンドルだけ操作し、アクセルとブレーキは自動
@@ -131,7 +132,7 @@ export function storeSave(save: SaveData): void {
 }
 
 export function loadSettings(): Settings {
-  const base: Settings = { quality: 'medium', sound: true, gyro: false, view: { ...DEFAULT_VIEW }, wheel: { ...DEFAULT_WHEEL }, autoDrive: false, cpuCount: 7, cpuStrength: 1 };
+  const base: Settings = { quality: 'medium', sound: true, gyro: false, gyroSens: 1, view: { ...DEFAULT_VIEW }, wheel: { ...DEFAULT_WHEEL }, autoDrive: false, cpuCount: 7, cpuStrength: 1 };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {

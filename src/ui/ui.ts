@@ -591,6 +591,8 @@ export class UI {
         <p>ハンドル</p>
         <div class="menu">${switchRow('gyro-toggle', 'スマホを傾けて操作', settings.gyro)}</div>
         <p class="note">ONにすると、スマホを左右に傾けてハンドルを切ります。構えはレース開始時の向きが「まっすぐ」になります。</p>
+        <p>感度</p>
+        <div class="menu">${[0.5, 1, 1.5, 2].map((v) => `<button class="btn ${settings.gyroSens === v ? 'active' : ''}" data-act="gyro-sens" data-arg="${v}">×${v}</button>`).join('')}</div>
       </div>
       <div class="card">
         <p>ハンドルの位置</p>

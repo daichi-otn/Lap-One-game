@@ -4,6 +4,7 @@ const FULL_DEG = 25; // この角度まで傾けると、ハンドルを目一�
 
 export class Gyro {
   active = false;
+  sensitivity = 1; // 感度 (1 が標準)
   private value: number | null = null; // 今の傾き (度)
   private neutral: number | null = null; // まっすぐの構えの傾き
   private wrapped = false; // 360 度でつながる値 (横持ちの回転) かどうか
@@ -56,7 +57,7 @@ export class Gyro {
     // 360 度でつながる値は、-180〜180 度の差に直す
     if (this.wrapped) d = ((d + 540) % 360) - 180;
     const sign = -Math.sign(d);
-    const amount = Math.max(0, Math.abs(d) - DEAD_DEG) / (FULL_DEG - DEAD_DEG);
+    const amount = Math.max(0, Math.abs(d) - DEAD_DEG) / (FULL_DEG / this.sensitivity - DEAD_DEG);
     return Math.max(-1, Math.min(1, sign * amount)) || 0; // 0 のときに -0 を返さない
   }
 }

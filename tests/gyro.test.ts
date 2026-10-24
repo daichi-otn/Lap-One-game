@@ -23,6 +23,13 @@ describe('gyro steering', () => {
   it('uses the resting pose as neutral', () => {
     expect(gyroAt(50, 50).steer()).toBe(0);
   });
+  it('a higher sensitivity turns the wheel more for the same tilt', () => {
+    const soft = gyroAt(20, 10);
+    soft.sensitivity = 0.5;
+    const sharp = gyroAt(20, 10);
+    sharp.sensitivity = 2;
+    expect(Math.abs(sharp.steer())).toBeGreaterThan(Math.abs(soft.steer()));
+  });
   it('returns 0 when inactive or no reading', () => {
     const g = new Gyro();
     expect(g.steer()).toBe(0);

@@ -119,9 +119,10 @@ let firstPerson = false;
 let mode: 'screen' | 'race' | 'result' | 'preview' = 'screen';
 let previewRace: Race | null = null; // 設定の後ろで見せる一人称の画面 (走らせない)
 // 設定に関係する操作は、プレビューを続ける
-const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'auto-toggle', 'view-reset', 'wheel-reset', 'cpu-count', 'cpu-strength']);
+const PREVIEW_ACTS = new Set(['settings', 'quality', 'sound-toggle', 'gyro-toggle', 'gyro-sens', 'auto-toggle', 'view-reset', 'wheel-reset', 'cpu-count', 'cpu-strength']);
 
 const input = new Input(() => (firstPerson = !firstPerson));
+input.gyro.sensitivity = settings.gyroSens;
 // 前回ジャイロを使っていたら、開始を試す (iOS は許可が要るので失敗しても止めない)
 if (settings.gyro) {
   void input.gyro.start().then((ok) => {
@@ -205,6 +206,12 @@ function act(name: string, arg?: string): void {
       break;
     case 'cpu-count':
       settings = { ...settings, cpuCount: Number(arg) };
+      storeSettings(settings);
+      showSettings();
+      break;
+    case 'gyro-sens':
+      settings = { ...settings, gyroSens: Number(arg) };
+      input.gyro.sensitivity = settings.gyroSens;
       storeSettings(settings);
       showSettings();
       break;
