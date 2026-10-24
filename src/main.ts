@@ -6,7 +6,7 @@ import { buildTrack } from './game/track';
 import { PLAYER_COLOR, Race } from './game/race';
 import { WEATHER, pickWeather, type Weather } from './game/weather';
 import { NEUTRAL_MODS, PARTS, SLOTS, computeMods, type Mods } from './game/parts';
-import { entryFee, payout } from './game/economy';
+import { borrowable, canEnter, credit, DEBT_LIMIT, entryFee, payout, refund } from './game/economy';
 import { CAR_MODELS, carById, carIndex, mulMods, usedKey } from './game/cars';
 import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
@@ -58,6 +58,7 @@ window.addEventListener('pointerdown', () => sound.unlock());
 window.addEventListener('keydown', () => sound.unlock());
 
 let race: Race | null = null;
+let paused = false; // レースを一時停止しているか (物理も入力も止める)
 let course: Course | null = null;
 let weather: Weather = 'sunny';
 let feePaid = 0;
@@ -114,6 +115,16 @@ function applyReplay(r: Race, t: number): void {
 // リプレイ中にタップしたら、結果へ進む
 window.addEventListener('pointerdown', () => {
   if (race && mode === 'race' && replayAt > 0) finishRace();
+});
+// Esc か P キーで、レースを一時停止・再開する
+window.addEventListener('keydown', (e) => {
+  if ((e.code !== 'Escape' && e.code !== 'KeyP') || e.repeat) return;
+  if (paused) resumeRace();
+  else pauseRace();
+});
+// 別のアプリへ切り替えたときや、画面が隠れたときは、レースを止める
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pauseRace();
 });
 let firstPerson = false;
 let mode: 'screen' | 'race' | 'result' | 'preview' = 'screen';
@@ -297,6 +308,25 @@ function act(name: string, arg?: string): void {
     case 'camera':
       firstPerson = !firstPerson;
       break;
+    case 'pause':
+      pauseRace();
+      break;
+    case 'resume':
+      resumeRace();
+      break;
+    case 'retire':
+      retireRace();
+      break;
+    case 'loan':
+      mode = 'screen';
+      ui.showLoan(save);
+      break;
+    case 'borrow':
+      borrow();
+      break;
+    case 'repay':
+      repay();
+      break;
     case 'daily':
       claimDaily();
       break;
@@ -352,10 +382,82 @@ function applyLimited(items: LimitedItem[]): void {
 function claimDaily(): void {
   if (save.lastBonus === todayKey()) return;
   save.lastBonus = todayKey();
-  save.coin += DAILY_BONUS;
+  income(DAILY_BONUS);
   storeSave(save);
   ui.toast(`デイリーボーナス +${DAILY_BONUS.toLocaleString()} coin`, true);
   showMenu();
+}
+
+// コインが入ったら、まず借金の返済に回す。返済した額を返す
+function income(amount: number): number {
+  const before = save.debt;
+  const next = credit(save.debt, amount);
+  save.debt = next.debt;
+  save.coin += next.coin;
+  return before - save.debt;
+}
+
+// 借金: 上限まで、1 回 1000 coin ずつ借りる (借りた分はすぐ所持コインになる)
+function borrow(): void {
+  const amount = borrowable(save.debt);
+  if (amount <= 0) {
+    ui.toast('これ以上は借りられません（借金の上限です）');
+    return;
+  }
+  save.debt += amount;
+  save.coin += amount;
+  storeSave(save);
+  ui.toast(`${amount.toLocaleString()} coin を借りました`, true);
+  ui.showLoan(save);
+}
+
+// 借金を返す: 持っているコインで、返せるだけ返す
+function repay(): void {
+  if (save.debt <= 0) {
+    ui.toast('借金はありません');
+    return;
+  }
+  const amount = Math.min(save.debt, save.coin);
+  if (amount <= 0) {
+    ui.toast('返すコインがありません');
+    return;
+  }
+  save.debt -= amount;
+  save.coin -= amount;
+  storeSave(save);
+  ui.toast(`${amount.toLocaleString()} coin を返しました`, true);
+  ui.showLoan(save);
+}
+
+// レースの一時停止: 物理も入力も止める。ゴール後の演出 (リプレイ) の中では止めない
+function canPause(): boolean {
+  return race !== null && mode === 'race' && race.phase !== 'finished';
+}
+
+function pauseRace(): void {
+  if (paused || !canPause()) return;
+  paused = true;
+  sound.frame(0, false, false);
+  ui.showPause();
+}
+
+function resumeRace(): void {
+  if (!paused) return;
+  paused = false;
+  ui.hidePause();
+}
+
+// リタイア: 参加費の半分が戻り、賞金はなし。試乗とタイムアタックは、結果を残さずに戻る
+function retireRace(): void {
+  if (!race || mode !== 'race' || race.phase === 'finished') return;
+  const text = testDrive || timeAttack
+    ? 'やめますか？'
+    : `リタイアしますか？\n賞金はもらえません。参加費の半分（${refund('retire', feePaid).toLocaleString()} coin）が戻ります。`;
+  if (!window.confirm(text)) return;
+  paused = false;
+  ui.hidePause();
+  race.retire();
+  finishRace();
 }
 
 // セーブデータを初期状態に戻す (誤操作を防ぐため確認を取る)
@@ -477,14 +579,17 @@ function startRace(c: Course, drive?: Trial, solo = false): void {
   // コースごとの参加費 (初回は無料)
   const fee = test || solo || free ? 0 : c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun);
   if (!test && !solo) {
-    if (save.coin < fee) {
-      ui.toast(`コインが足りません（参加費 ${fee.toLocaleString()}）`);
+    if (!canEnter(save.coin, save.debt, fee)) {
+      ui.toast(`コインが足りません（参加費 ${fee.toLocaleString()}・借金の上限 ${DEBT_LIMIT.toLocaleString()}）`);
       return;
     }
-    // 参加費は出走確定時に引き落とす
-    save.coin -= fee;
+    // 参加費は出走確定時に引き落とす。足りない分は、借金で補う
+    const borrowed = Math.max(0, fee - save.coin);
+    save.debt += borrowed;
+    save.coin -= fee - borrowed;
     save.racesRun += 1;
     storeSave(save);
+    if (borrowed > 0) ui.toast(`不足分 ${borrowed.toLocaleString()} coin を借金して出走します`, true);
   }
   feePaid = fee;
   testDrive = test;
@@ -527,6 +632,7 @@ function startRace(c: Course, drive?: Trial, solo = false): void {
   recTimer = 0;
   firstPerson = false;
   input.gyro.calibrate();
+  paused = false;
   mode = 'race';
   ui.showHud();
 }
@@ -545,6 +651,9 @@ function makeAiMods(count: number): Mods[] {
 function finishRace(): void {
   if (!race || !course || mode !== 'race') return;
   sound.stopRace();
+  paused = false;
+  ui.hidePause();
+  ui.hideHud();
   // 試乗は結果もコインも残さず、ショップへ戻る
   if (testDrive) {
     testDrive = false;
@@ -559,6 +668,13 @@ function finishRace(): void {
   }
   if (timeAttack) {
     timeAttack = false;
+    // タイムアタックをやめた: 記録は残さず、コース一覧へ戻る
+    if (race.outcome === 'retire') {
+      mode = 'screen';
+      race = null;
+      ui.showTimeAttack(save);
+      return;
+    }
     mode = 'result';
     const outcome = race.outcome ?? 'dnf';
     const t = race.player.finishTime;
@@ -582,20 +698,22 @@ function finishRace(): void {
   }
   mode = 'result';
   const outcome = race.outcome ?? 'dnf';
-  const pay = payout(outcome, course.prizeMult * eventPrizeMult(config, course.id, nowKey()));
-  save.coin += pay;
+  const pay = payout(outcome, course.prizeMult * eventPrizeMult(config, course.id, nowKey()), feePaid);
+  const back = refund(outcome, feePaid);
+  // 賞金と払い戻しは、まず借金の返済に回る
+  const repaid = income(pay + back);
   // 優勝・完走の回数を数えて、実績を確かめる
   if (outcome === 'win') save.wins += 1;
-  if (outcome !== 'dnf') save.finishes += 1;
+  if (outcome === 'win' || outcome === 'finish') save.finishes += 1;
   for (const a of ACHIEVEMENTS) {
     if (save.achievements.includes(a.id) || !a.done(save)) continue;
     save.achievements.push(a.id);
-    save.coin += a.reward;
+    income(a.reward);
     ui.toast(`実績達成: ${a.name} (+${a.reward.toLocaleString()} coin)`, true);
   }
 
   const t = race.player.finishTime;
-  if (outcome !== 'dnf' && t !== undefined) {
+  if ((outcome === 'win' || outcome === 'finish') && t !== undefined) {
     const best = save.bestTime[course.id];
     if (best === undefined || t < best) save.bestTime[course.id] = t;
   }
@@ -608,8 +726,11 @@ function finishRace(): void {
     position: race.playerPosition(),
     fee: feePaid,
     payout: pay,
+    refund: back,
+    repaid,
     coin: save.coin,
-    time: outcome === 'dnf' || t === undefined ? null : t,
+    debt: save.debt,
+    time: outcome === 'dnf' || outcome === 'retire' || t === undefined ? null : t,
   });
 }
 
@@ -787,7 +908,8 @@ function equipPart(id: string | undefined): void {
 let lastVisual = performance.now();
 createFixedStepLoop(
   (dt) => {
-    if (race && mode === 'race') {
+    // 一時停止のあいだは、物理も入力も記録も進めない
+    if (race && mode === 'race' && !paused) {
       const before = race.player.durability;
       const controls = input.poll(dt);
       // ゴールまでの走りを記録する

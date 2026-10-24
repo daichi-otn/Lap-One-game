@@ -19,6 +19,7 @@ export interface SaveData {
   equippedRim: string;
   ownedGrips: string[]; // 持っているハンドルの握りの色
   equippedGrip: string;
+  debt: number; // 借金の残高 (返すまで残る。上限は economy.ts の DEBT_LIMIT)
 }
 
 export type Quality = 'low' | 'medium' | 'high';
@@ -109,6 +110,7 @@ export function newSave(): SaveData {
     equippedRim: 'rim-0',
     ownedGrips: ['grip-0'],
     equippedGrip: 'grip-0',
+    debt: 0,
   };
 }
 

@@ -165,6 +165,13 @@ export class Race {
     return this.ranking().indexOf(this.player) + 1;
   }
 
+  // 途中でやめる (リタイア)。レースはその場で終わり、賞金はもらえない
+  retire(): void {
+    if (this.phase === 'finished') return;
+    this.outcome = 'retire';
+    this.phase = 'finished';
+  }
+
   // ピットレーン (道の右側) に、ほぼ止まって入ると耐久が全快する。時間は 60 秒加わる
   private checkPit(): void {
     const p = this.player;

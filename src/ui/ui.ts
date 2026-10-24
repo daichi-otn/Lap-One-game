@@ -1,5 +1,5 @@
 import { COURSES, type Course } from '../game/courses';
-import { entryFee, payout, type Outcome } from '../game/economy';
+import { borrowable, canEnter, DEBT_LIMIT, entryFee, payout, type Outcome } from '../game/economy';
 import { MOD_NAMES, PARTS, SLOTS, computeMods, type Mods } from '../game/parts';
 import { CAR_MODELS, carById, mulMods, usedKey, usedPrice } from '../game/cars';
 import { nowKey, todayKey } from '../game/rewards';
@@ -20,7 +20,10 @@ export interface RaceResult {
   position: number;
   fee: number;
   payout: number;
+  refund: number; // 失格・リタイアで戻る参加費
+  repaid: number; // この結果の入金から返した借金
   coin: number;
+  debt: number;
   time: number | null;
 }
 
@@ -96,6 +99,7 @@ export class UI {
           <div class="chip" data-hud="pos"></div>
           <div class="chip" data-hud="time"></div>
           <div class="chip" data-hud="ghost" hidden></div>
+          <button class="chip btn-small" data-act="pause">一時停止</button>
           <button class="chip btn-small" data-act="camera">視点</button>
         </div>
         <div class="center" data-hud="center"></div>
@@ -186,12 +190,14 @@ export class UI {
         <div><span class="muted">乗車中</span><b>${carById(save.equippedCar).name}</b></div>
         <div><span class="muted">所持コイン</span><b class="gold">${save.coin.toLocaleString()}</b></div>
         <div><span class="muted">出走</span><b>${save.racesRun} 回</b></div>
+        ${save.debt > 0 ? `<div><span class="muted">借金</span><b class="neg">${save.debt.toLocaleString()}</b></div>` : ''}
       </div>
       <div class="menu">
         <button class="btn big race-btn" data-act="race">レースに出る</button>
         <button class="btn big" data-act="ta-list">タイムアタック</button>
         ${save.lastBonus !== todayKey() ? '<button class="btn big" data-act="daily">デイリーボーナスを受け取る</button>' : ''}
         <button class="btn big" data-act="shop">ショップ</button>
+        <button class="btn big" data-act="loan">借金</button>
         <button class="btn big" data-act="achievements">実績</button>
         <button class="btn big" data-act="help">遊び方</button>
         <button class="btn big" data-act="garage">ガレージ</button>
@@ -279,9 +285,16 @@ export class UI {
       ${sec('レースの流れ', [
         'スタートランプが消えたら、スタートです',
         'ゴールすると「FINISH」が出て、リプレイが流れます。タップで飛ばせます',
-        '完走すると、順位に応じて賞金がもらえます。優勝すると特に大きな賞金です',
-        '耐久が0になると失格です。エンジンの回転がレッドゾーンに3秒続くと、エンストして止まります',
+        '完走すると、参加費と同じ額がもらえます (収支は0)。優勝すると大きな賞金です',
+        '耐久が0になると失格です。失格のときは、参加費の半分が戻ります',
+        '途中でやめるには、右上の「一時停止」を押します (Esc か P キーでも可)。リタイアすると、参加費の半分が戻ります',
+        'エンジンの回転がレッドゾーンに3秒続くと、エンストして止まります',
         'ピットに入ると、耐久とニトロが満タンになります (無料)',
+      ])}
+      ${sec('借金', [
+        `参加費が足りないときは、足りない分が自動で借りられます (上限 ${DEBT_LIMIT.toLocaleString()} coin)`,
+        '借金は、賞金・参加賞・デイリーボーナス・実績のコインから、まず返済に回ります',
+        'メニューの「借金」で、借りたり、今すぐ返したりできます',
       ])}
       ${sec('車づくり', [
         'ショップで、部品や車種、色を買います。分類を選んでから、買うものを選びます',
@@ -358,20 +371,20 @@ export class UI {
           <div class="muted">周回 ${c.laps} ／ 賞金倍率 ×${c.prizeMult}${eventPrizeMult(this.config, c.id, nowKey()) !== 1 ? ` （開催中のイベントで ×${eventPrizeMult(this.config, c.id, nowKey())}）` : ''}</div>
           <div class="muted">天候: ${Object.keys(c.weather).map((w) => weatherLabel(w)).join('・')}</div>
           <div class="best">ベストタイム: ${formatBest(save.bestTime[c.id])}</div>
-          <button class="btn" data-act="course" data-arg="${c.id}" ${save.coin < fee ? 'disabled' : ''}>
-            出走（参加費 ${fee.toLocaleString()}）
+          <button class="btn" data-act="course" data-arg="${c.id}" ${canEnter(save.coin, save.debt, fee) ? '' : 'disabled'}>
+            出走（参加費 ${fee.toLocaleString()}${save.coin < fee ? ' ・ 不足分は借金' : ''}）
           </button>
           </div>
         </div>`;
       },
     ).join('');
-    const anyAffordable = COURSES.some((c) => save.coin >= (c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun)));
+    const anyAffordable = COURSES.some((c) => canEnter(save.coin, save.debt, c.entryFee !== undefined && save.racesRun > 0 ? c.entryFee : entryFee(save.racesRun)));
     this.setScreen(`
       <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
       <h2>コースを選ぶ</h2>
       <div class="cat-chips level-chips">${chips}</div>
       ${cards}
-      ${anyAffordable ? '' : '<p class="warn">コインが足りないため出走できません</p>'}`);
+      ${anyAffordable ? '' : '<p class="warn">借金の上限まで借りても、出走できません（借金の画面で返してください）</p>'}`);
   }
 
   showGarage(save: SaveData, opts: GarageOptions): void {
@@ -612,9 +625,10 @@ export class UI {
 
   showResult(r: RaceResult): void {
     this.hideHud();
-    const title = r.outcome === 'win' ? '優勝！' : r.outcome === 'finish' ? '完走' : '失格（大破）';
-    const posText = r.outcome === 'dnf' ? '失格' : `${r.position} 位`;
-    const net = r.payout - r.fee;
+    const title = { win: '優勝！', finish: '完走', dnf: '失格（大破）', retire: 'リタイア' }[r.outcome];
+    const posText = r.outcome === 'dnf' || r.outcome === 'retire' ? '—' : `${r.position} 位`;
+    // 収支: 入ったコイン (賞金・払い戻し) から、参加費を引いた額。借金の返済は、入ったコインの中から行われる
+    const net = r.payout + r.refund - r.fee;
     const prizeLabel = r.outcome === 'win' ? '賞金' : r.outcome === 'finish' ? '参加賞' : '受取';
     this.setScreen(`
       <h1 class="title">${title}</h1>
@@ -624,9 +638,12 @@ export class UI {
         <div class="row"><span>順位</span><b>${posText}</b></div>
         <div class="row"><span>タイム</span><b>${r.time === null ? '—' : formatTime(r.time)}</b></div>
         <div class="row"><span>参加費</span><b>-${r.fee.toLocaleString()}</b></div>
-        <div class="row"><span>${prizeLabel}</span><b>+${r.payout.toLocaleString()}</b></div>
+        ${r.refund > 0 ? `<div class="row"><span>払い戻し（半額）</span><b>+${r.refund.toLocaleString()}</b></div>` : ''}
+        ${r.payout > 0 ? `<div class="row"><span>${prizeLabel}</span><b>+${r.payout.toLocaleString()}</b></div>` : ''}
+        ${r.repaid > 0 ? `<div class="row"><span>借金の返済</span><b>-${r.repaid.toLocaleString()}</b></div>` : ''}
         <div class="row total"><span>収支</span><b class="${net < 0 ? 'neg' : 'pos'}">${net >= 0 ? '+' : ''}${net.toLocaleString()}</b></div>
         <div class="row"><span>所持コイン</span><b>${r.coin.toLocaleString()}</b></div>
+        ${r.debt > 0 ? `<div class="row"><span>借金の残り</span><b class="neg">${r.debt.toLocaleString()}</b></div>` : ''}
       </div>
       <div class="menu">
         <button class="btn big" data-act="race">もう一度（コース選択）</button>
@@ -652,6 +669,46 @@ export class UI {
 
   hideHud(): void {
     this.hud.hidden = true;
+  }
+
+  // 一時停止の画面: レースの上に重ねて、再開かリタイアを選ぶ
+  private pauseEl: HTMLElement | null = null;
+  showPause(): void {
+    this.hidePause();
+    const el = document.createElement('div');
+    el.className = 'pause';
+    el.innerHTML = `
+      <div class="pause-card">
+        <h2>一時停止</h2>
+        <button class="btn big race-btn" data-act="resume">再開する</button>
+        <button class="btn big danger" data-act="retire">リタイア</button>
+        <p class="note">Esc か P キーでも、停止と再開ができます</p>
+      </div>`;
+    this.root.appendChild(el);
+    this.pauseEl = el;
+  }
+
+  hidePause(): void {
+    this.pauseEl?.remove();
+    this.pauseEl = null;
+  }
+
+  // 借金の画面: 残高と上限を見て、借りる・返す
+  showLoan(save: SaveData): void {
+    const canBorrow = borrowable(save.debt);
+    const canRepay = Math.min(save.debt, save.coin) > 0;
+    this.setScreen(`
+      <div class="topbar"><button class="btn-small" data-act="menu">戻る</button><span class="coin">${save.coin.toLocaleString()} coin</span></div>
+      <h2>借金</h2>
+      <div class="card">
+        <div class="stat"><span>借金の残高</span><b class="${save.debt > 0 ? 'neg' : ''}">${save.debt.toLocaleString()}</b></div>
+        <div class="stat"><span>借りられる上限</span><b>${DEBT_LIMIT.toLocaleString()}</b></div>
+        <div class="stat"><span>あと借りられる額</span><b>${(DEBT_LIMIT - save.debt).toLocaleString()}</b></div>
+        <button class="btn big" data-act="borrow" ${canBorrow > 0 ? '' : 'disabled'}>借りる（+${canBorrow.toLocaleString()} coin）</button>
+        <button class="btn big" data-act="repay" ${canRepay ? '' : 'disabled'}>返す（${Math.min(save.debt, save.coin).toLocaleString()} coin）</button>
+      </div>
+      <p class="note">借金は、賞金・参加賞・デイリーボーナス・実績のコインから、まず返済に回ります。</p>
+      <p class="note">参加費が足りないときは、足りない分が自動で借りられます。</p>`);
   }
 
   updateHud(race: Race, firstPerson: boolean): void {
