@@ -649,9 +649,9 @@ export function instantiateCar(template: Template, look: Look = {}): THREE.Group
   }
   // サイドミラー (両側のドアの前) とナンバープレート (後ろ)
   const mirrorMat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.mirror, look.mirror ?? 1), roughness: 0.4, metalness: 0.5 });
-  for (const z of [0.42, -0.42]) {
+  for (const z of [0.46, -0.46]) { // 車体の側面 (半幅 約 0.42) の外に出す
     const m = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.07), mirrorMat);
-    m.position.set(-0.42, 0.34, z);
+    m.position.set(-0.42, 0.06, z); // 車体の側面の中ほど (屋根の高さ約 0.13 より下)
     inner.add(m);
   }
   const plateMat = new THREE.MeshStandardMaterial({ color: tierColor(TIER_COLORS_MORE.plate, look.plate ?? 1), roughness: 0.5 });
