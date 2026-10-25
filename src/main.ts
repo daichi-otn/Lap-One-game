@@ -7,7 +7,7 @@ import { PLAYER_COLOR, Race } from './game/race';
 import { WEATHER, pickWeather, type Weather } from './game/weather';
 import { NEUTRAL_MODS, PARTS, SLOTS, computeMods, type Mods } from './game/parts';
 import { borrowable, canEnter, credit, DEBT_LIMIT, entryFee, payout, refund } from './game/economy';
-import { CAR_MODELS, carById, carIndex, mulMods, usedKey } from './game/cars';
+import { CAR_MODELS, carAero, carById, mulMods, usedKey } from './game/cars';
 import { PAINTS, paintIndex } from './game/paints';
 import { GRIPS, RIMS, trimIndex } from './game/trims';
 import { GHOST_STEP, ghostPose, ghostTimeAtDist, loadGhosts, storeGhost, type Ghost } from './game/ghost';
@@ -743,7 +743,7 @@ function carLook(): Look & Record<string, number> {
 function lookFor(carId: string, equipped: SaveData['equipped'], paint: string, rim: string, grip: string): Look & Record<string, number> {
   return {
     ...lookFromEquipped(equipped),
-    model: carIndex(carId),
+    model: carAero(carId),
     paint: paintIndex(paint),
     rim: trimIndex(RIMS, rim),
     grip: trimIndex(GRIPS, grip),

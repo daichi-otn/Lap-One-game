@@ -40,7 +40,7 @@ export function lookFromEquipped(equipped: Partial<Record<string, string>>): Loo
 
 // 装着中のパーツ (id 例: "engine-2") から、見た目の段階を作る (下の型)
 export interface Look {
-  model?: number; // 車種 (0 が標準)
+  model?: number; // エアロパーツの段階 (0 が標準。車種の aero で決まる)
   paint?: number; // ボディの色 (PAINTS の番号)
   headlight?: number; // ヘッドライトの段階
   mirror?: number; // サイドミラーの段階
