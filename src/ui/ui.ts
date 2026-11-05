@@ -67,6 +67,7 @@ export interface UIHandlers {
   hold(action: Action, down: boolean): void;
   view(key: string, value: number): void;
   wheel(key: string, value: number): void;
+  gyroSens(value: number): void;
 }
 
 export class UI {
@@ -143,6 +144,16 @@ export class UI {
         this.h.wheel(el.dataset.wheel, wv);
         const wout = root.querySelector(`[data-val="wheel-${el.dataset.wheel}"]`);
         if (wout) wout.textContent = viewLabel('x', wv);
+        return;
+      }
+      if (el.dataset.gyroSens) {
+        const value = Number(el.value);
+        this.h.gyroSens(value);
+        const out = root.querySelector('[data-val="gyro-sens"]');
+        if (out) out.textContent = `×${value.toFixed(2)}`;
+        root.querySelectorAll<HTMLElement>('[data-act="gyro-sens"]').forEach((button) => {
+          button.classList.toggle('active', Number(button.dataset.arg) === value);
+        });
         return;
       }
       if (!el.dataset.view) return;
@@ -593,6 +604,7 @@ export class UI {
         <p class="note">ONにすると、スマホを左右に傾けてハンドルを切ります。構えはレース開始時の向きが「まっすぐ」になります。</p>
         <p>感度</p>
         <div class="menu">${[0.5, 1, 1.5, 2].map((v) => `<button class="btn ${settings.gyroSens === v ? 'active' : ''}" data-act="gyro-sens" data-arg="${v}">×${v}</button>`).join('')}</div>
+        <label class="slider gyro-sensitivity"><span>細かく調整: <b data-val="gyro-sens">×${settings.gyroSens.toFixed(2)}</b></span><input type="range" data-gyro-sens min="0.5" max="2" step="0.01" value="${settings.gyroSens}"></label>
       </div>
       <div class="card">
         <p>ハンドルの位置</p>

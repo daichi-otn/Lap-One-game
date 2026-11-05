@@ -137,6 +137,7 @@ const ui = new UI(document.getElementById('ui')!, {
   hold: (action: Action, down: boolean) => input.press(action, down),
   view: (key, value) => viewChange(key as keyof FirstPersonView, value),
   wheel: (key, value) => wheelChange(key as keyof WheelOffset, value),
+  gyroSens: (value) => gyroSensChange(value),
 });
 world.setFirstPersonView(settings.view);
 world.setWheelOffset(settings.wheel);
@@ -467,6 +468,14 @@ function viewChange(key: keyof FirstPersonView, value: number): void {
   settings = { ...settings, view: { ...settings.view, [key]: value } };
   storeSettings(settings);
   world.setFirstPersonView(settings.view);
+}
+
+// ジャイロ感度のスライダーは、画面を作り直さずその場で反映する
+function gyroSensChange(value: number): void {
+  const gyroSens = Math.max(0.5, Math.min(2, Number(value)));
+  settings = { ...settings, gyroSens };
+  input.gyro.sensitivity = gyroSens;
+  storeSettings(settings);
 }
 
 // drive: 試乗のときの構成。試乗は参加費も出走数も賞金もなく、CPU もいない
